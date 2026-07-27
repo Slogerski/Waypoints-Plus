@@ -46,7 +46,7 @@ Both waypoint coordinates and distance can be turned off. Disable them before ta
 
 - Fabric Loader.
 - Fabric API.
-- Minecraft `1.21.2`–`1.21.4` with Java 21 (experimental compatibility build).
+- Minecraft `1.21.2`–`1.21.4` with Java 21
 - Minecraft `1.21.8` with Java 21.
 - Minecraft `26.1.2` with Java 25.
 
