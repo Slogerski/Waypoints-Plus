@@ -23,7 +23,7 @@ dependencies {
     mappings "net.fabricmc:yarn:${yarn_1_21_4}:v2"
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_1_21_4}"
-    implementation "com.google.code.gson:gson:2.11.0"
+    implementation "com.google.code.gson:gson:2.14.0"
 }
 
 processResources {

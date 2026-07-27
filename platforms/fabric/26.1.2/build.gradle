@@ -28,7 +28,7 @@ dependencies {
     minecraft "com.mojang:minecraft:${minecraft_26_1_2}"
     implementation "net.fabricmc:fabric-loader:${fabric_loader}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_26_1_2}"
-    implementation "com.google.code.gson:gson:2.11.0"
+    implementation "com.google.code.gson:gson:2.14.0"
 }
 
 processResources {
