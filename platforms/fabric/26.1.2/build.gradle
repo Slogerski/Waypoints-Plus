@@ -1,0 +1,51 @@
+plugins {
+    id "net.fabricmc.fabric-loom"
+}
+
+base {
+    archivesName = "waypoints-plus-${minecraft_26_1_2}-fabric"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+}
+
+sourceSets {
+    main {
+        java.srcDir(project(":common").file("src/main/java"))
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_26_1_2}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_26_1_2}"
+    implementation "com.google.code.gson:gson:2.11.0"
+}
+
+processResources {
+    inputs.property "version", project.version
+    from(rootProject.file("LICENSE")) {
+        rename { "LICENSE_${mod_id}" }
+    }
+    filesMatching("fabric.mod.json") {
+        expand(
+            "version": project.version,
+            "minecraft_version": minecraft_26_1_2,
+            "fabric_loader": fabric_loader,
+            "mod_id": mod_id,
+            "mod_name": mod_name,
+            "mod_description": mod_description,
+            "mod_authors": mod_authors,
+            "mod_license": mod_license
+        )
+    }
+}

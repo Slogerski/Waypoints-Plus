@@ -1,0 +1,10 @@
+{
+  "key.category.waypointsplus": "Waypoints Plus",
+  "key.category.waypointsplus.waypoints": "Waypoints Plus",
+  "key.waypointsplus.create": "Create waypoint",
+  "key.waypointsplus.manage": "Manage waypoints",
+  "key.waypointsplus.advanced_settings": "Advanced settings",
+  "key.waypointsplus.reload": "Reload waypoints from file",
+  "key.waypointsplus.profile_previous": "Previous waypoint profile",
+  "key.waypointsplus.profile_next": "Next waypoint profile"
+}

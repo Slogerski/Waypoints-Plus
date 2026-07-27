@@ -1,0 +1,17 @@
+.gradle/
+build/
+**/build/
+out/
+run/
+.idea/
+*.iml
+.vscode/
+*.class
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

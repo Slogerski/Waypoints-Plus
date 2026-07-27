@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible Waypoints Plus problem.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: mod-version
+    attributes:
+      label: Waypoints Plus version
+    validations:
+      required: true
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft, loader, and loader version
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include exact reproduction steps and the expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Attach latest.log or a crash report. Remove private information first.
+    validations:
+      required: false

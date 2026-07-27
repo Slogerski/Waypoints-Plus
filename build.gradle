@@ -1,0 +1,49 @@
+plugins {
+    id "fabric-loom" version "1.17.12" apply false
+    id "net.fabricmc.fabric-loom" version "1.17.12" apply false
+}
+
+allprojects {
+    group = mod_group_id
+    version = mod_version
+}
+
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+        options.release = 21
+    }
+}
+
+tasks.register("buildAll") {
+    group = "build"
+    description = "Builds every supported Minecraft platform module."
+    dependsOn(":common:test", ":fabric-1.21.4:build", ":fabric-1.21.8:build", ":fabric-26.1.2:build")
+}
+
+tasks.register("assembleModrinthArtifacts", Sync) {
+    group = "distribution"
+    description = "Collects release-ready, remapped mod jars in build/modrinth."
+    dependsOn(":fabric-1.21.4:remapJar", ":fabric-1.21.8:remapJar", ":fabric-26.1.2:jar")
+    into(layout.buildDirectory.dir("modrinth"))
+    from(project(":fabric-1.21.4").layout.buildDirectory.dir("libs")) {
+        include("*.jar")
+        exclude("*-dev.jar", "*-sources.jar")
+    }
+    from(project(":fabric-1.21.8").layout.buildDirectory.dir("libs")) {
+        include("*.jar")
+        exclude("*-dev.jar", "*-sources.jar")
+    }
+    from(project(":fabric-26.1.2").layout.buildDirectory.dir("libs")) {
+        include("*.jar")
+        exclude("*-dev.jar", "*-sources.jar")
+    }
+}
+
+tasks.register("assembleCurseForgeArtifacts", Sync) {
+    group = "distribution"
+    description = "Collects release-ready jars for CurseForge."
+    dependsOn("assembleModrinthArtifacts")
+    from(layout.buildDirectory.dir("modrinth"))
+    into(layout.buildDirectory.dir("curseforge"))
+}

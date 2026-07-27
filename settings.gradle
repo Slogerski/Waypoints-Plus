@@ -1,0 +1,25 @@
+pluginManagement {
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        maven { url = "https://maven.fabricmc.net/" }
+        mavenCentral()
+    }
+}
+
+rootProject.name = "WaypointsPlus"
+
+include(":common")
+include(":fabric-1.21.4")
+project(":fabric-1.21.4").projectDir = file("platforms/fabric/1.21.4")
+include(":fabric-1.21.8")
+project(":fabric-1.21.8").projectDir = file("platforms/fabric/1.21.8")
+include(":fabric-26.1.2")
+project(":fabric-26.1.2").projectDir = file("platforms/fabric/26.1.2")
