@@ -15,7 +15,7 @@ final class ColorPickerScreen extends Screen {
     private int dragging;
 
     ColorPickerScreen(Screen parent, String argb, Consumer<String> onApply) {
-        super(Text.literal(UiText.get("Color picker", "Wybór koloru")));
+        super(Text.literal(UiText.get("Color Picker", "Wybór koloru")));
         this.parent = parent;
         this.onApply = onApply;
         long value = Long.parseLong(argb, 16);

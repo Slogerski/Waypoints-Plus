@@ -1,0 +1,33 @@
+plugins {
+    id "fabric-loom"
+}
+
+apply from: rootProject.file("gradle/fabric-yarn-platform.gradle")
+
+sourceSets {
+    legacyGsonCheck {
+        java.srcDir(rootProject.file("platforms/fabric/common/src/test/java"))
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+dependencies {
+    legacyGsonCheckImplementation "com.google.code.gson:gson:2.8.9"
+}
+
+configurations.legacyGsonCheckRuntimeClasspath {
+    resolutionStrategy.force "com.google.code.gson:gson:2.8.9"
+}
+
+tasks.register("verifyLegacyGson", JavaExec) {
+    group = "verification"
+    description = "Verifies waypoint JSON compatibility with Minecraft 1.19.2's Gson 2.8.9."
+    dependsOn(tasks.named("legacyGsonCheckClasses"))
+    classpath = sourceSets.legacyGsonCheck.runtimeClasspath
+    mainClass = "pl.slogerski.waypointsplus.fabric.LegacyGsonCompatibilityCheck"
+}
+
+tasks.named("check") {
+    dependsOn(tasks.named("verifyLegacyGson"))
+}

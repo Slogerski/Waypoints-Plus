@@ -39,7 +39,7 @@ abstract class WaypointFormScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Paste", "Wklej")), b -> pasteCoordinates())
                 .pos(panelLeft + 10, panelTop + 120).size(94, 20).build());
-        addRenderableWidget(Button.builder(Component.literal(UiText.get("Choose color", "Wybierz kolor"))
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Choose Color", "Wybierz kolor"))
                 .withColor(borderColor()), b -> {
             snapshot();
             minecraft.setScreen(new ColorPickerScreen(this, selectedColor, value -> selectedColor = value));
@@ -48,11 +48,11 @@ abstract class WaypointFormScreen extends Screen {
                 .pos(panelLeft + 10, panelTop + 158).size(136, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Exit", "Wyjdź")), b -> onClose())
                 .pos(panelLeft + 154, panelTop + 158).size(136, 20).build());
-        name.setFocused(true);
+        setInitialFocus(name);
     }
 
     private EditBox field(int x, int y, int width, String value, int max, String hint) {
-        EditBox field = new EditBox(font, x + 5, y + 2, width - 10, 16, Component.literal(hint));
+        EditBox field = new EditBox(font, x + 5, y + 5, width - 10, 10, Component.literal(hint));
         field.setBordered(false);
         field.setMaxLength(max);
         field.setValue(value);

@@ -7,7 +7,7 @@ import net.minecraft.util.math.BlockPos;
 
 final class CreateWaypointScreen extends WaypointFormScreen {
     CreateWaypointScreen(Screen parent) {
-        super(parent, Text.literal(UiText.get("Create waypoint", "Utwórz waypoint")), "",
+        super(parent, Text.literal(UiText.get("Create Waypoint", "Utwórz waypoint")), "",
                 currentPos().getX(), currentPos().getY(), currentPos().getZ(),
                 String.format("%08X", WaypointsPlusClient.config().settings().markerArgb));
     }

@@ -60,20 +60,19 @@ final class WaypointManagerScreen extends Screen {
                 .dimensions(left, navY, 36, 20).build()).active = page > 0;
         addDrawableChild(ButtonWidget.builder(Text.literal(">"), b -> client.setScreen(new WaypointManagerScreen(parent, page + 1)))
                 .dimensions(left + 42, navY, 36, 20).build()).active = page + 1 < pages;
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Advanced settings", "Ustawienia zaawansowane")),
+        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
                 b -> client.setScreen(new WaypointSettingsScreen(this))).dimensions(left + 84, navY, 190, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Done", "Gotowe")), b -> close())
                 .dimensions(left + 280, navY, 80, 20).build());
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, width, height, 0xD0101420);
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 8, 0xFFFFFFFF);
         context.drawCenteredTextWithShadow(textRenderer,
                 Text.literal(UiText.get("Profile: ", "Profil: ") + profileName), width / 2, 31, 0xFFD946EF);
         context.drawCenteredTextWithShadow(textRenderer,
-                Text.literal(UiText.get("Waypoints: ", "Waypointy: ") + entries.size()), width / 2, 49, 0xFF00F5FF);
+                Text.literal(WaypointCountText.format(entries.size())), width / 2, 49, 0xFF555555);
         int left = width / 2 - 180;
         int from = page * PAGE_SIZE;
         for (int i = from; i < Math.min(entries.size(), from + PAGE_SIZE); i++) {
@@ -90,6 +89,8 @@ final class WaypointManagerScreen extends Screen {
         try { return (int)Long.parseLong(value.replace("#", ""), 16); }
         catch (RuntimeException ignored) { return 0xFFFFFFFF; }
     }
+
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { }
 
     @Override public void close() { client.setScreen(parent); }
 }

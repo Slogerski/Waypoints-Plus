@@ -22,8 +22,8 @@ final class ProfileNameScreen extends Screen {
 
     ProfileNameScreen(Screen exitScreen, Screen settingsParent, String originalName) {
         super(Component.literal(originalName == null
-                ? UiText.get("Add profile", "Dodaj profil")
-                : UiText.get("Edit profile", "Edytuj profil")));
+                ? UiText.get("Add Profile", "Dodaj profil")
+                : UiText.get("Edit Profile", "Edytuj profil")));
         this.exitScreen = exitScreen;
         this.settingsParent = settingsParent;
         this.originalName = originalName;
@@ -32,13 +32,13 @@ final class ProfileNameScreen extends Screen {
     @Override protected void init() {
         left = width / 2 - 140;
         top = Math.max(20, height / 2 - 70);
-        name = new EditBox(font, left + 15, top + 47, 250, 16,
-                Component.literal(UiText.get("Profile name", "Nazwa profilu")));
+        name = new EditBox(font, left + 15, top + 50, 250, 10,
+                Component.literal(UiText.get("Profile Name", "Nazwa profilu")));
         name.setBordered(false);
         name.setMaxLength(48);
         if (originalName != null) name.setValue(originalName);
         addRenderableWidget(name);
-        name.setFocused(true);
+        setInitialFocus(name);
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Save", "Zapisz")), b -> save())
                 .pos(left + 10, top + 82).size(126, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Exit", "Wyjdź")), b -> onClose())
@@ -52,7 +52,7 @@ final class ProfileNameScreen extends Screen {
             } else {
                 WaypointsPlusClient.config().renameProfile(ServerScope.current(), originalName, name.getValue());
             }
-            minecraft.setScreen(new WaypointSettingsScreen(settingsParent));
+            minecraft.setScreen(exitScreen);
         } catch (IllegalArgumentException ignored) {
             error = UiText.get("Enter a unique profile name.", "Podaj unikalną nazwę profilu.");
         }
@@ -66,7 +66,7 @@ final class ProfileNameScreen extends Screen {
         outline(graphics, left + 10, top + 43, left + 270, top + 67);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         graphics.centeredText(font, title, width / 2, top + 13, ACCENT);
-        graphics.text(font, UiText.get("Profile name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0, true);
+        graphics.text(font, UiText.get("Profile Name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0, true);
         if (!error.isEmpty()) graphics.centeredText(font, Component.literal(error), width / 2, top + 108, 0xFFFF657A);
     }
 

@@ -3,7 +3,6 @@ package pl.slogerski.waypointsplus.core;
 import java.util.Objects;
 import java.util.UUID;
 
-/** A version-independent waypoint model. */
 public record Waypoint(UUID id, String name, String serverKey, String profile, String dimension,
                        int x, int y, int z, String colorArgb) {
     public Waypoint {

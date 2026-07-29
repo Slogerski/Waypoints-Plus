@@ -57,18 +57,17 @@ final class WaypointManagerScreen extends Screen {
                 .pos(left, navY).size(36, 20).build(); previous.active = page > 0; addRenderableWidget(previous);
         Button next = Button.builder(Component.literal(">"), b -> minecraft.setScreen(new WaypointManagerScreen(parent, page + 1)))
                 .pos(left + 42, navY).size(36, 20).build(); next.active = page + 1 < pages; addRenderableWidget(next);
-        addRenderableWidget(Button.builder(Component.literal(UiText.get("Advanced settings", "Ustawienia zaawansowane")),
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
                 b -> minecraft.setScreen(new WaypointSettingsScreen(this))).pos(left + 84, navY).size(190, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Done", "Gotowe")), b -> onClose())
                 .pos(left + 280, navY).size(80, 20).build());
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xD0101420);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
         graphics.centeredText(font, Component.literal(UiText.get("Profile: ", "Profil: ") + profileName), width / 2, 31, 0xFFD946EF);
-        graphics.centeredText(font, Component.literal(UiText.get("Waypoints: ", "Waypointy: ") + entries.size()), width / 2, 49, 0xFF00F5FF);
+        graphics.centeredText(font, Component.literal(WaypointCountText.format(entries.size())), width / 2, 49, 0xFF555555);
         int left = width / 2 - 180, from = page * PAGE_SIZE;
         for (int i = from; i < Math.min(entries.size(), from + PAGE_SIZE); i++) {
             Waypoint w = entries.get(i);
@@ -84,6 +83,8 @@ final class WaypointManagerScreen extends Screen {
         try { return (int)Long.parseLong(value.replace("#", ""), 16); }
         catch (RuntimeException ignored) { return 0xFFFFFFFF; }
     }
+
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
 
     @Override public void onClose() { Minecraft.getInstance().setScreen(parent); }
 }

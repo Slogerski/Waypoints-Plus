@@ -1,0 +1,64 @@
+def platformSpec = gradle.ext.waypointsVersionManifest.versions.find {
+    it.project == project.name
+}
+if (platformSpec == null || platformSpec.status != "active") {
+    throw new GradleException("No active version manifest entry for ${project.path}")
+}
+if (platformSpec.mappingType != "official") {
+    throw new GradleException("${project.path} must use official Minecraft names")
+}
+
+def minecraftVersion = platformSpec.minecraft ?: platformSpec.gameVersions.first()
+def minecraftRequirement = platformSpec.gameVersions.first()
+def javaVersion = platformSpec.java as Integer
+def fabricLoaderVersion = platformSpec.fabricLoader as String
+
+base {
+    archivesName = "waypoints-plus-mc${platformSpec.id}-fabric"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaVersion)
+    }
+    sourceCompatibility = JavaVersion.toVersion(javaVersion)
+    targetCompatibility = JavaVersion.toVersion(javaVersion)
+}
+
+sourceSets {
+    main {
+        java.srcDir(project(":common").file("src/main/java"))
+        java.srcDir(rootProject.file("platforms/fabric/common/src/main/java"))
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    implementation "net.fabricmc:fabric-loader:${fabricLoaderVersion}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${platformSpec.fabricApi}"
+    implementation "com.google.code.gson:gson:${gson_version}"
+}
+
+processResources {
+    inputs.properties(
+        "version": project.version,
+        "minecraft_requirement": minecraftRequirement,
+        "java_version": javaVersion
+    )
+    from(rootProject.file("LICENSE")) {
+        rename { "LICENSE_${mod_id}" }
+    }
+    filesMatching("fabric.mod.json") {
+        expand(
+            "version": project.version,
+            "minecraft_requirement": minecraftRequirement,
+            "java_version": javaVersion,
+            "fabric_loader": fabricLoaderVersion,
+            "mod_id": mod_id,
+            "mod_name": mod_name,
+            "mod_description": mod_description,
+            "mod_authors": mod_authors,
+            "mod_license": mod_license
+        )
+    }
+}

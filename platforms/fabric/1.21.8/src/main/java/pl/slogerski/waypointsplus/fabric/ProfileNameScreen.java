@@ -21,8 +21,8 @@ final class ProfileNameScreen extends Screen {
 
     ProfileNameScreen(Screen exitScreen, Screen settingsParent, String originalName) {
         super(Text.literal(originalName == null
-                ? UiText.get("Add profile", "Dodaj profil")
-                : UiText.get("Edit profile", "Edytuj profil")));
+                ? UiText.get("Add Profile", "Dodaj profil")
+                : UiText.get("Edit Profile", "Edytuj profil")));
         this.exitScreen = exitScreen;
         this.settingsParent = settingsParent;
         this.originalName = originalName;
@@ -31,13 +31,13 @@ final class ProfileNameScreen extends Screen {
     @Override protected void init() {
         left = width / 2 - 140;
         top = Math.max(20, height / 2 - 70);
-        name = new TextFieldWidget(textRenderer, left + 15, top + 47, 250, 16,
-                Text.literal(UiText.get("Profile name", "Nazwa profilu")));
+        name = new TextFieldWidget(textRenderer, left + 15, top + 50, 250, 10,
+                Text.literal(UiText.get("Profile Name", "Nazwa profilu")));
         name.setDrawsBackground(false);
         name.setMaxLength(48);
         if (originalName != null) name.setText(originalName);
         addDrawableChild(name);
-        name.setFocused(true);
+        setInitialFocus(name);
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Save", "Zapisz")), b -> save())
                 .dimensions(left + 10, top + 82, 126, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Exit", "Wyjdź")), b -> close())
@@ -51,7 +51,7 @@ final class ProfileNameScreen extends Screen {
             } else {
                 WaypointsPlusClient.config().renameProfile(ServerScope.current(), originalName, name.getText());
             }
-            client.setScreen(new WaypointSettingsScreen(settingsParent));
+            client.setScreen(exitScreen);
         } catch (IllegalArgumentException ignored) {
             error = UiText.get("Enter a unique profile name.", "Podaj unikalną nazwę profilu.");
         }
@@ -65,7 +65,7 @@ final class ProfileNameScreen extends Screen {
         outline(context, left + 10, top + 43, left + 270, top + 67);
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 13, ACCENT);
-        context.drawTextWithShadow(textRenderer, UiText.get("Profile name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Profile Name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0);
         if (!error.isEmpty()) context.drawCenteredTextWithShadow(textRenderer, Text.literal(error), width / 2, top + 108, 0xFFFF657A);
     }
 

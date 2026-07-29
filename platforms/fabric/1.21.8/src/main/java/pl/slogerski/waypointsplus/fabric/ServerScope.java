@@ -1,6 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.WorldSavePath;
 
 import java.util.Locale;
 
@@ -11,8 +12,16 @@ final class ServerScope {
         MinecraftClient client = MinecraftClient.getInstance();
         var server = client.getCurrentServerEntry();
         if (server != null) return "server:" + normalize(server.address);
-        if (client.getServer() != null) return "singleplayer:" + client.getServer().getSaveProperties().getLevelName();
+        if (client.getServer() != null) {
+            var folder = client.getServer().getSavePath(WorldSavePath.ROOT).getFileName();
+            return "singleplayer:" + (folder == null ? client.getServer().getSaveProperties().getLevelName() : folder);
+        }
         return "unknown";
+    }
+
+    static String legacySingleplayer() {
+        var server = MinecraftClient.getInstance().getServer();
+        return server == null ? null : "singleplayer:" + server.getSaveProperties().getLevelName();
     }
 
     private static String normalize(String address) {

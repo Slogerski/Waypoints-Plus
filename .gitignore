@@ -6,6 +6,7 @@ run/
 .idea/
 *.iml
 .vscode/
+.waypointsplus-notes/
 *.class
 *.log
 *.tmp

@@ -38,7 +38,7 @@ abstract class WaypointFormScreen extends Screen {
 
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Paste", "Wklej")), b -> pasteCoordinates())
                 .dimensions(panelLeft + 10, panelTop + 120, 94, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Choose color", "Wybierz kolor"))
+        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Choose Color", "Wybierz kolor"))
                 .styled(style -> style.withColor(borderColor())), b -> {
             snapshot();
             client.setScreen(new ColorPickerScreen(this, selectedColor, value -> selectedColor = value));
@@ -47,11 +47,11 @@ abstract class WaypointFormScreen extends Screen {
                 .dimensions(panelLeft + 10, panelTop + 158, 136, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Exit", "Wyjdź")), b -> close())
                 .dimensions(panelLeft + 154, panelTop + 158, 136, 20).build());
-        name.setFocused(true);
+        setInitialFocus(name);
     }
 
     private TextFieldWidget field(int x, int y, int width, String value, int max, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 2, width - 10, 16, Text.literal(hint));
+        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 5, width - 10, 10, Text.literal(hint));
         field.setDrawsBackground(false);
         field.setMaxLength(max);
         field.setText(value);

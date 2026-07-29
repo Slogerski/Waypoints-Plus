@@ -1,7 +1,15 @@
+import groovy.json.JsonSlurper
+import java.util.jar.JarFile
+
 plugins {
     id "fabric-loom" version "1.17.12" apply false
     id "net.fabricmc.fabric-loom" version "1.17.12" apply false
 }
+
+def versionManifest = gradle.ext.waypointsVersionManifest
+def versionSpecs = versionManifest.versions
+def activeVersionSpecs = versionSpecs.findAll { it.status == "active" }
+def activeSpecByProject = activeVersionSpecs.collectEntries { [(it.project as String): it] }
 
 allprojects {
     group = mod_group_id
@@ -9,41 +17,180 @@ allprojects {
 }
 
 subprojects {
+    def javaRelease = name == "common"
+        ? 17
+        : (activeSpecByProject[name]?.java as Integer)
+
+    if (javaRelease == null) {
+        throw new GradleException("No Java version declared for active project ${path}")
+    }
+
     tasks.withType(JavaCompile).configureEach {
         options.encoding = "UTF-8"
-        options.release = 21
+        options.release.set(javaRelease)
+    }
+}
+
+tasks.register("listSupportedVersions") {
+    group = "help"
+    description = "Prints every active, planned, and blocked Minecraft version."
+    doLast {
+        versionSpecs.each { spec ->
+            def reason = spec.blockedReason ? " - ${spec.blockedReason}" : ""
+            println("${spec.id}: ${spec.status}, Java ${spec.java}, ${spec.mappingType}${reason}")
+        }
+    }
+}
+
+tasks.register("validateVersionManifest") {
+    group = "verification"
+    description = "Validates the central Minecraft version manifest and active modules."
+    inputs.file(layout.projectDirectory.file("versions/supported-versions.json"))
+    doLast {
+        def reparsed = new JsonSlurper().parse(
+            layout.projectDirectory.file("versions/supported-versions.json").asFile
+        )
+        def active = reparsed.versions.findAll { it.status == "active" }
+
+        if (active.isEmpty()) {
+            throw new GradleException("At least one Minecraft version must be active")
+        }
+
+        active.each { spec ->
+            def moduleDir = layout.projectDirectory.dir(spec.directory as String).asFile
+            if (!moduleDir.isDirectory()) {
+                throw new GradleException("Missing active module ${spec.project}: ${moduleDir}")
+            }
+            if (!new File(moduleDir, "build.gradle").isFile()) {
+                throw new GradleException("Missing build.gradle for active version ${spec.id}")
+            }
+            if (!(spec.gameVersions instanceof List) || spec.gameVersions.isEmpty()) {
+                throw new GradleException("Active version ${spec.id} has no gameVersions")
+            }
+            if (!(spec.java in [17, 21, 25])) {
+                throw new GradleException("Unsupported Java level ${spec.java} for ${spec.id}")
+            }
+            if (!(spec.fabricLoader instanceof String) || spec.fabricLoader.isBlank()) {
+                throw new GradleException("Fabric Loader version is missing for ${spec.id}")
+            }
+            if (!(spec.mappingType in ["yarn", "official"])) {
+                throw new GradleException("Unsupported mapping type for ${spec.id}")
+            }
+            if (spec.mappingType == "yarn" && !spec.yarn) {
+                throw new GradleException("Yarn version is missing for ${spec.id}")
+            }
+            if (!spec.fabricApi) {
+                throw new GradleException("Fabric API version is missing for ${spec.id}")
+            }
+        }
+
+        def canonicalStore = null
+        def canonicalStoreVersion = null
+        active.each { spec ->
+            def store = layout.projectDirectory.file(
+                "${spec.directory}/src/main/java/pl/slogerski/waypointsplus/fabric/WaypointConfigStore.java"
+            ).asFile
+            if (!store.isFile()) {
+                throw new GradleException("Missing WaypointConfigStore for active version ${spec.id}")
+            }
+            if (canonicalStore == null) {
+                canonicalStore = store.bytes
+                canonicalStoreVersion = spec.id
+            } else if (!java.util.Arrays.equals(canonicalStore, store.bytes)) {
+                throw new GradleException(
+                    "WaypointConfigStore for ${spec.id} differs from ${canonicalStoreVersion}; " +
+                    "storage changes must be applied to every active version"
+                )
+            }
+        }
     }
 }
 
 tasks.register("buildAll") {
     group = "build"
-    description = "Builds every supported Minecraft platform module."
-    dependsOn(":common:test", ":fabric-1.21.4:build", ":fabric-1.21.8:build", ":fabric-26.1.2:build")
+    description = "Builds every active Minecraft platform module."
+    dependsOn("validateVersionManifest", ":common:test")
+    dependsOn(activeVersionSpecs.collect { ":${it.project}:build" })
 }
 
 tasks.register("assembleModrinthArtifacts", Sync) {
     group = "distribution"
-    description = "Collects release-ready, remapped mod jars in build/modrinth."
-    dependsOn(":fabric-1.21.4:remapJar", ":fabric-1.21.8:remapJar", ":fabric-26.1.2:jar")
+    description = "Collects one release-ready JAR for every active Minecraft version."
+    dependsOn("validateVersionManifest")
+    dependsOn(activeVersionSpecs.collect { ":${it.project}:${it.artifactTask}" })
     into(layout.buildDirectory.dir("modrinth"))
-    from(project(":fabric-1.21.4").layout.buildDirectory.dir("libs")) {
-        include("*.jar")
-        exclude("*-dev.jar", "*-sources.jar")
+
+    activeVersionSpecs.each { spec ->
+        from(project(":${spec.project}").layout.buildDirectory.dir("libs")) {
+            include("*-${mod_version}.jar")
+            exclude("*-dev.jar", "*-sources.jar")
+        }
     }
-    from(project(":fabric-1.21.8").layout.buildDirectory.dir("libs")) {
-        include("*.jar")
-        exclude("*-dev.jar", "*-sources.jar")
-    }
-    from(project(":fabric-26.1.2").layout.buildDirectory.dir("libs")) {
-        include("*.jar")
-        exclude("*-dev.jar", "*-sources.jar")
+}
+
+tasks.register("validateReleaseArtifacts") {
+    group = "verification"
+    description = "Verifies artifact count, metadata, namespace, and embedded license."
+    dependsOn("assembleModrinthArtifacts")
+    doLast {
+        def outputDir = layout.buildDirectory.dir("modrinth").get().asFile
+        def jars = outputDir.listFiles()?.findAll { it.name.endsWith(".jar") }?.sort() ?: []
+
+        if (jars.size() != activeVersionSpecs.size()) {
+            throw new GradleException(
+                "Expected ${activeVersionSpecs.size()} release JARs, found ${jars.size()}: " +
+                    jars.collect { it.name }
+            )
+        }
+
+        jars.each { jarFile ->
+            def spec = activeVersionSpecs.find {
+                jarFile.name.startsWith("waypoints-plus-mc${it.id}-fabric-")
+            }
+            if (spec == null) {
+                throw new GradleException("${jarFile.name} does not match an active version")
+            }
+            new JarFile(jarFile).withCloseable { jar ->
+                def metadataEntry = jar.getJarEntry("fabric.mod.json")
+                if (metadataEntry == null) {
+                    throw new GradleException("${jarFile.name} has no fabric.mod.json")
+                }
+                def metadata = new JsonSlurper().parse(jar.getInputStream(metadataEntry))
+                if (metadata.id != mod_id) {
+                    throw new GradleException("${jarFile.name} has unexpected mod id ${metadata.id}")
+                }
+                if (metadata.version != mod_version) {
+                    throw new GradleException(
+                        "${jarFile.name} has version ${metadata.version}, expected ${mod_version}"
+                    )
+                }
+                if (!(metadata.authors instanceof List) || !metadata.authors.contains("Slogerski")) {
+                    throw new GradleException("${jarFile.name} has invalid author metadata")
+                }
+                def expectedLoader = ">=${spec.fabricLoader}"
+                if (metadata.depends?.fabricloader != expectedLoader) {
+                    throw new GradleException(
+                        "${jarFile.name} requires ${metadata.depends?.fabricloader}, expected ${expectedLoader}"
+                    )
+                }
+
+                def licenseEntry = jar.getJarEntry("LICENSE_${mod_id}")
+                if (licenseEntry == null) {
+                    throw new GradleException("${jarFile.name} has no embedded license")
+                }
+                def licenseText = jar.getInputStream(licenseEntry).getText("UTF-8")
+                if (!licenseText.contains("Slogerski")) {
+                    throw new GradleException("${jarFile.name} has invalid license ownership")
+                }
+            }
+        }
     }
 }
 
 tasks.register("assembleCurseForgeArtifacts", Sync) {
     group = "distribution"
-    description = "Collects release-ready jars for CurseForge."
-    dependsOn("assembleModrinthArtifacts")
+    description = "Collects verified release-ready JARs for CurseForge."
+    dependsOn("validateReleaseArtifacts")
     from(layout.buildDirectory.dir("modrinth"))
     into(layout.buildDirectory.dir("curseforge"))
 }

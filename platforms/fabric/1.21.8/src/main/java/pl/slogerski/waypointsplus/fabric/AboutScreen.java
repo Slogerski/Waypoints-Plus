@@ -34,7 +34,7 @@ final class AboutScreen extends Screen {
                 .dimensions(right + 67, top + 78, 63, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Source"), b -> open(SOURCE))
                 .dimensions(right + 134, top + 78, 64, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Buy me a coffee"), b -> open(COFFEE))
+        addDrawableChild(ButtonWidget.builder(Text.literal("Buy Me a Coffee"), b -> open(COFFEE))
                 .dimensions(right, top + 106, 198, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Exit", "Wyjdź")), b -> close())
                 .dimensions(left + 10, top + 158, 280, 20).build());
@@ -44,8 +44,6 @@ final class AboutScreen extends Screen {
         context.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(context, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(context, left, top, left + 300, top + 188);
-        roundedFill(context, left + 10, top + 34, left + 82, top + 130, 0xA0000000);
-        solidOutline(context, left + 10, top + 34, left + 82, top + 130, 0xFFC43D9D);
         context.drawTexture(RenderPipelines.GUI_TEXTURED, AVATAR, left + 11, top + 35,
                 0.0f, 0.0f, 70, 94, 355, 475, 355, 475);
         super.render(context, mouseX, mouseY, delta);
@@ -75,17 +73,14 @@ final class AboutScreen extends Screen {
             int x1 = l + 2 + (r - l - 4) * i / 24;
             int x2 = l + 2 + (r - l - 4) * (i + 1) / 24;
             c.fill(x1, t, x2, t + 1, mix(PURPLE, RED, i / 23.0f));
-            c.fill(x1, b - 1, x2, b, mix(RED, PURPLE, i / 23.0f));
+            c.fill(x1, b - 1, x2, b, mix(PURPLE, RED, i / 23.0f));
         }
         c.fill(l, t + 2, l + 1, b - 2, PURPLE);
         c.fill(r - 1, t + 2, r, b - 2, RED);
-    }
-
-    private static void solidOutline(DrawContext c, int l, int t, int r, int b, int color) {
-        c.fill(l + 2, t, r - 2, t + 1, color);
-        c.fill(l + 2, b - 1, r - 2, b, color);
-        c.fill(l, t + 2, l + 1, b - 2, color);
-        c.fill(r - 1, t + 2, r, b - 2, color);
+        c.fill(l + 1, t + 1, l + 2, t + 2, PURPLE);
+        c.fill(r - 2, t + 1, r - 1, t + 2, RED);
+        c.fill(l + 1, b - 2, l + 2, b - 1, PURPLE);
+        c.fill(r - 2, b - 2, r - 1, b - 1, RED);
     }
 
     private static int mix(int a, int b, float t) {

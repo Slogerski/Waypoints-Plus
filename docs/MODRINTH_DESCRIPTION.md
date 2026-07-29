@@ -48,20 +48,22 @@ Coordinates and distance can be disabled independently. This is useful when shar
 
 ## Supported versions
 
-- Experimental compatibility build for Fabric `1.21.2–1.21.4` — Java 21. Test each game version before relying on it.
-- Fabric for Minecraft `1.21.8` — Java 21.
-- Fabric for Minecraft `26.1.2` — Java 25.
+- Fabric `1.19.2` and `1.20.1` — Java 17.
+- Fabric `1.20.6`, `1.21.1`, `1.21.2–1.21.6`, `1.21.8`, `1.21.10`, and `1.21.11` — Java 21.
+- Fabric `26.1.2` and `26.2` — Java 25.
+- Every Minecraft version is distributed as a separately built JAR with exact version metadata.
 - Fabric API is required.
 
 ## Configuration
 
-Waypoint data is stored locally in:
+Waypoint data is stored locally in readable per-server files:
 
 ```text
-config/waypointsplus/waypoints.json
+config/waypointsplus/profiles.json
+config/waypointsplus/waypoints/<server-file-id>.json
 ```
 
-The file is intentionally readable and can be edited outside the game. Use the unassigned reload keybind to refresh externally modified waypoints.
+`profiles.json` maps each server or world to its waypoint file. The files can be edited outside the game. Use the unassigned reload keybind to refresh the active server file.
 
 ## Links
 

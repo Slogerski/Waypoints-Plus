@@ -19,7 +19,10 @@ Contains the smallest possible adapter for one exact Minecraft version:
 
 Code moves into `common` whenever it can be expressed without platform types. Version-specific code never leaks into another platform module.
 
-Minecraft 1.21.4 and 1.21.8 use separate Yarn adapters, while 26.1.2 uses Mojang's official mappings and the extraction-based GUI API. They therefore share data and domain code, not platform source files.
+Versions through 1.21.11 use Yarn adapters. Minecraft 26.x uses Mojang's official
+names and the extraction-based GUI API. Rendering has explicit compatibility
+boundaries for legacy 1.19.2, the classic 1.20–1.21 pipeline, the command-queue
+pipeline in 1.21.10–1.21.11, and the 26.x extraction pipeline.
 
 ## UI boundaries
 
@@ -33,8 +36,12 @@ The router allows screen implementations to change between Minecraft versions wi
 
 ## Adding another version
 
-1. Create `platforms/fabric/<version>/` based on the nearest supported version.
-2. Add version-specific dependency properties to `gradle.properties`.
-3. Include the module in `settings.gradle`.
-4. Add its build and remap tasks to the root aggregation tasks.
-5. Update the support table in `README.md` and verify every module independently.
+1. Add a `planned` entry to `versions/supported-versions.json`.
+2. Create `platforms/fabric/<version>/` from the nearest API-compatible adapter.
+3. Build and test the module independently.
+4. Change its manifest status to `active`.
+5. Run `buildAll validateReleaseArtifacts` and update public documentation.
+
+`settings.gradle`, aggregate tasks, artifact collection, and CI discover active
+versions from the manifest. A new active version therefore cannot be omitted from
+the complete build accidentally.

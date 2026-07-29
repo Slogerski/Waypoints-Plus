@@ -8,7 +8,6 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
-/** Fabric 1.21.8 adapter: binds only; no rendering is registered here. */
 public final class WaypointsPlusClient implements ClientModInitializer {
     private static final String CATEGORY = "key.category.waypointsplus";
     private static final String DEATH_COLOR = "EEFF405D";

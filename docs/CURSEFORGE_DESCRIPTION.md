@@ -50,19 +50,24 @@ Both waypoint coordinates and distance can be turned off. Disable them before ta
 
 - Fabric Loader.
 - Fabric API.
-- Minecraft `1.21.2–1.21.4` experimental build with Java 21, Minecraft `1.21.8` with Java 21, or Minecraft `26.1.2` with Java 25.
+- Minecraft `1.19.2` or `1.20.1` with Java 17.
+- Minecraft `1.20.6`, `1.21.1`, `1.21.2–1.21.6`, `1.21.8`, `1.21.10`, or `1.21.11` with Java 21.
+- Minecraft `26.1.2` or `26.2` with Java 25.
+- Every Minecraft version is distributed as a separately built JAR with exact version metadata.
 
 Waypoints Plus is entirely client-side. A server does not need to install it.
 
 ## Local data
 
-Waypoint data is stored in a readable file:
+Waypoint data is stored in readable per-server files:
 
 ```text
-config/waypointsplus/waypoints.json
+config/waypointsplus/profiles.json
+config/waypointsplus/waypoints/<server-file-id>.json
 ```
 
-You can edit it outside Minecraft and use the reload keybind afterward.
+`profiles.json` maps each server or world to its waypoint file. You can edit the
+active server file outside Minecraft and use the reload keybind afterward.
 
 ## Project links
 

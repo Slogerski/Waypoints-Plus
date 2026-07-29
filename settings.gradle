@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 pluginManagement {
     repositories {
         maven { url = "https://maven.fabricmc.net/" }
@@ -16,10 +18,42 @@ dependencyResolutionManagement {
 
 rootProject.name = "WaypointsPlus"
 
+def manifestFile = file("versions/supported-versions.json")
+if (!manifestFile.isFile()) {
+    throw new GradleException("Missing version manifest: ${manifestFile}")
+}
+
+def manifest = new JsonSlurper().parse(manifestFile)
+if (manifest.schemaVersion != 1) {
+    throw new GradleException("Unsupported version manifest schema: ${manifest.schemaVersion}")
+}
+
+def allowedStatuses = ["active", "planned", "blocked"] as Set
+def projectNames = new HashSet<String>()
+def versionIds = new HashSet<String>()
+
+manifest.versions.each { spec ->
+    if (!versionIds.add(spec.id as String)) {
+        throw new GradleException("Duplicate version id in manifest: ${spec.id}")
+    }
+    if (!projectNames.add(spec.project as String)) {
+        throw new GradleException("Duplicate project name in manifest: ${spec.project}")
+    }
+    if (!allowedStatuses.contains(spec.status)) {
+        throw new GradleException("Invalid status '${spec.status}' for ${spec.id}")
+    }
+    if (spec.status == "active" && !file(spec.directory as String).isDirectory()) {
+        throw new GradleException("Active version ${spec.id} has no module at ${spec.directory}")
+    }
+    if (spec.status == "blocked" && !spec.blockedReason) {
+        throw new GradleException("Blocked version ${spec.id} must provide blockedReason")
+    }
+}
+
+gradle.ext.waypointsVersionManifest = manifest
+
 include(":common")
-include(":fabric-1.21.4")
-project(":fabric-1.21.4").projectDir = file("platforms/fabric/1.21.4")
-include(":fabric-1.21.8")
-project(":fabric-1.21.8").projectDir = file("platforms/fabric/1.21.8")
-include(":fabric-26.1.2")
-project(":fabric-26.1.2").projectDir = file("platforms/fabric/26.1.2")
+manifest.versions.findAll { it.status == "active" }.each { spec ->
+    include(":${spec.project}")
+    project(":${spec.project}").projectDir = file(spec.directory as String)
+}

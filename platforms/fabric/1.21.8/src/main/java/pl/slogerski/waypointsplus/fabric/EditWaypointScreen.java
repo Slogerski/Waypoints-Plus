@@ -8,7 +8,7 @@ final class EditWaypointScreen extends WaypointFormScreen {
     private final Waypoint waypoint;
 
     EditWaypointScreen(Screen parent, Waypoint waypoint) {
-        super(parent, Text.literal(UiText.get("Edit waypoint", "Edytuj waypoint")), waypoint.name(),
+        super(parent, Text.literal(UiText.get("Edit Waypoint", "Edytuj waypoint")), waypoint.name(),
                 waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb());
         this.waypoint = waypoint;
     }
