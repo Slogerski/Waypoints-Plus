@@ -1,3 +1,4 @@
+![aa](https://cdn.modrinth.com/data/cached_images/6c02ea6a406ee040def164f51a8835d175682fc5_0.webp)
 # Waypoints Plus
 
 **Waypoints Plus** is a lightweight client-side Fabric mod for creating colorful, smooth waypoint markers. It provides per-server profiles, cross-dimension coordinate conversion, customizable visuals, and convenient in-game management.
