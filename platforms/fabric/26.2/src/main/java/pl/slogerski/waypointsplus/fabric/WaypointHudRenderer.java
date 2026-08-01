@@ -4,25 +4,34 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhase;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.SubmitNodeCollection;
+import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
+import net.minecraft.client.renderer.feature.TextFeatureRenderer;
+import net.minecraft.client.renderer.feature.submit.SubmitNode;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import pl.slogerski.waypointsplus.core.Waypoint;
+import pl.slogerski.waypointsplus.core.WaypointAppearance;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
+    private static final SubmitRenderPhase<SubmitNode> AFTER_TERRAIN =
+            new SubmitRenderPhase<>(collection -> collection.afterTerrain);
 
     private WaypointHudRenderer() { }
 
     static void register() {
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WaypointHudRenderer::render);
+        LevelRenderEvents.COLLECT_SUBMITS.register(WaypointHudRenderer::render);
     }
 
     private static void render(LevelRenderContext context) {
@@ -84,7 +93,7 @@ final class WaypointHudRenderer {
         Component text = Component.literal(label);
         int textWidth = minecraft.font.width(text);
         float x = -textWidth / 2.0f;
-        int background = settings.background ? settings.backgroundArgb : 0;
+        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
 
         pose.pushPose();
         pose.translate(dx, dy, dz);
@@ -94,32 +103,32 @@ final class WaypointHudRenderer {
         OrderedSubmitNodeCollector panelSubmits = submits.order(0);
         OrderedSubmitNodeCollector textSubmits = submits.order(1);
 
-        panelSubmits.submitCustomGeometry(
-            pose,
-            RenderTypes.textBackgroundSeeThrough(),
-            (entry, vertices) -> drawRoundedPanel(
-                vertices,
-                entry.pose(),
-                x - 3.0f,
-                -7.0f,
-                x + textWidth + 3.0f,
-                8.0f,
-                background,
-                color
-            )
-        );
-        textSubmits.submitText(
-            pose,
-            x,
-            -4.0f,
-            text.getVisualOrderText(),
-            false,
-            Font.DisplayMode.SEE_THROUGH,
-            FULL_BRIGHT,
-            color,
-            0,
-            0
-        );
+        panelSubmits.submitCustom(AFTER_TERRAIN, new CustomFeatureRenderer.Submit(
+                pose.last().copy(),
+                RenderTypes.textBackgroundSeeThrough(),
+                (entry, vertices) -> drawRoundedPanel(
+                        vertices,
+                        entry.pose(),
+                        x - 3.0f,
+                        -7.0f,
+                        x + textWidth + 3.0f,
+                        8.0f,
+                        background,
+                        color
+                )
+        ));
+        textSubmits.submitCustom(AFTER_TERRAIN, new TextFeatureRenderer.Submit(
+                new Matrix4f(pose.last().pose()),
+                x,
+                -4.0f,
+                text.getVisualOrderText(),
+                false,
+                Font.DisplayMode.SEE_THROUGH,
+                FULL_BRIGHT,
+                color,
+                0,
+                0
+        ));
         pose.popPose();
     }
 

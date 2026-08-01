@@ -18,7 +18,7 @@ final class AboutScreen extends Screen {
     private int left, top;
 
     AboutScreen(Screen parent) {
-        super(Text.literal(UiText.get("About", "O modzie")));
+        super(Text.literal("Waypoints Plus"));
         this.parent = parent;
     }
 
@@ -40,7 +40,6 @@ final class AboutScreen extends Screen {
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
         DrawContext context = new DrawContext(matrices);
-        context.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(context, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(context, left, top, left + 300, top + 188);
         super.render(matrices, mouseX, mouseY, delta);
@@ -87,6 +86,8 @@ final class AboutScreen extends Screen {
         int blue = (int)((a & 255) * (1 - t) + (b & 255) * t);
         return 0xFF000000 | r << 16 | g << 8 | blue;
     }
+
+    @Override public void renderBackground(MatrixStack matrices) { }
 
     @Override public void close() { client.setScreen(parent); }
 }

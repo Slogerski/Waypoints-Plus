@@ -52,7 +52,7 @@ abstract class WaypointFormScreen extends Screen {
     }
 
     private EditBox field(int x, int y, int width, String value, int max, String hint) {
-        EditBox field = new EditBox(font, x + 5, y + 5, width - 10, 10, Component.literal(hint));
+        EditBox field = new EditBox(font, x + 5, y + 6, width - 10, 10, Component.literal(hint));
         field.setBordered(false);
         field.setMaxLength(max);
         field.setValue(value);

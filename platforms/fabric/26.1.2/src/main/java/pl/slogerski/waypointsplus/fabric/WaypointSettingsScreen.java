@@ -97,7 +97,7 @@ final class WaypointSettingsScreen extends Screen {
     }
 
     private EditBox field(int x, int y, int width, String value, String hint) {
-        EditBox field = new EditBox(font, x + 5, y + 5, width - 10, 10, Component.literal(hint));
+        EditBox field = new EditBox(font, x + 5, y + 6, width - 10, 10, Component.literal(hint));
         field.setBordered(false);
         field.setValue(value);
         addRenderableWidget(field);
@@ -124,8 +124,9 @@ final class WaypointSettingsScreen extends Screen {
         onClose();
     }
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xC0080B12);
         int bottom = virtualProfile ? top + 150 : top + 250;
         roundedFill(graphics, left, top, left + 300, bottom, 0xE0141824);
         gradientOutline(graphics, left, top, left + 300, bottom);
@@ -139,7 +140,7 @@ final class WaypointSettingsScreen extends Screen {
         graphics.centeredText(font, Component.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
         graphics.text(font, UiText.get("Scale", "Skala"), left + 10, top + 156, 0xFFD9E2F0, true);
-        graphics.text(font, "Default Marker", left + 106, top + 156, 0xFFD9E2F0, true);
+        graphics.text(font, UiText.get("Default Marker", "Domyślny znacznik"), left + 106, top + 156, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Background ARGB", "Tło ARGB"), left + 202, top + 156, 0xFFD9E2F0, true);
     }
 

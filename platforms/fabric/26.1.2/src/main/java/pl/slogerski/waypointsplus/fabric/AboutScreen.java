@@ -21,7 +21,7 @@ final class AboutScreen extends Screen {
     private int left, top;
 
     AboutScreen(Screen parent) {
-        super(Component.literal(UiText.get("About", "O modzie")));
+        super(Component.literal("Waypoints Plus"));
         this.parent = parent;
     }
 
@@ -41,8 +41,9 @@ final class AboutScreen extends Screen {
                 .pos(left + 10, top + 158).size(280, 20).build());
     }
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(graphics, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(graphics, left, top, left + 300, top + 188);
         graphics.blit(RenderPipelines.GUI_TEXTURED, AVATAR, left + 11, top + 35,

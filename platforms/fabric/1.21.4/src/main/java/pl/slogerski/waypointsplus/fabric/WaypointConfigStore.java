@@ -428,12 +428,15 @@ final class WaypointConfigStore {
     private void migrateLegacySingleplayerProfile(String key) {
         if (!key.startsWith("singleplayer:") || !key.equals(ServerScope.current())) return;
         if (profiles.containsKey(key)) return;
-        String legacyKey = ServerScope.legacySingleplayer();
-        if (legacyKey == null || legacyKey.equals(key)) return;
-        ServerProfiles legacy = profiles.remove(legacyKey);
-        if (legacy != null) {
-            profiles.put(key, legacy);
-            saveProfiles();
+        String[] legacyKeys = {"singleplayer:.", ServerScope.legacySingleplayer()};
+        for (String legacyKey : legacyKeys) {
+            if (legacyKey == null || legacyKey.equals(key)) continue;
+            ServerProfiles legacy = profiles.remove(legacyKey);
+            if (legacy != null) {
+                profiles.put(key, legacy);
+                saveProfiles();
+                return;
+            }
         }
     }
 

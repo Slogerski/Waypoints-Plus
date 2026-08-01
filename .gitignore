@@ -7,6 +7,7 @@ run/
 *.iml
 .vscode/
 .waypointsplus-notes/
+docs/
 *.class
 *.log
 *.tmp

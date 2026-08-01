@@ -32,7 +32,7 @@ final class ProfileNameScreen extends Screen {
     @Override protected void init() {
         left = width / 2 - 140;
         top = Math.max(20, height / 2 - 70);
-        name = new EditBox(font, left + 15, top + 50, 250, 10,
+        name = new EditBox(font, left + 15, top + 51, 250, 10,
                 Component.literal(UiText.get("Profile Name", "Nazwa profilu")));
         name.setBordered(false);
         name.setMaxLength(48);

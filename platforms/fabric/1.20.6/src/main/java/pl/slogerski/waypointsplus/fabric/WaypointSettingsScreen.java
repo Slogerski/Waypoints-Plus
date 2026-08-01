@@ -96,7 +96,7 @@ final class WaypointSettingsScreen extends Screen {
     }
 
     private TextFieldWidget field(int x, int y, int width, String value, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 5, width - 10, 10, Text.literal(hint));
+        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 6, width - 10, 10, Text.literal(hint));
         field.setDrawsBackground(false);
         field.setText(value);
         addDrawableChild(field);
@@ -124,7 +124,6 @@ final class WaypointSettingsScreen extends Screen {
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, width, height, 0xC0080B12);
         int bottom = virtualProfile ? top + 150 : top + 250;
         roundedFill(context, left, top, left + 300, bottom, 0xE0141824);
         gradientOutline(context, left, top, left + 300, bottom);
@@ -138,7 +137,7 @@ final class WaypointSettingsScreen extends Screen {
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
         context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 10, top + 156, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, "Default Marker", left + 106, top + 156, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Marker", "Domyślny znacznik"), left + 106, top + 156, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Background ARGB", "Tło ARGB"), left + 202, top + 156, 0xFFD9E2F0);
     }
 

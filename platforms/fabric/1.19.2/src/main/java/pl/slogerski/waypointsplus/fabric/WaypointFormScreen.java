@@ -50,7 +50,7 @@ abstract class WaypointFormScreen extends Screen {
     }
 
     private TextFieldWidget field(int x, int y, int width, String value, int max, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 5, width - 10, 10, Text.literal(hint));
+        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 6, width - 10, 10, Text.literal(hint));
         field.setDrawsBackground(false);
         field.setMaxLength(max);
         field.setText(value);

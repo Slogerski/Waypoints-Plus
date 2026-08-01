@@ -13,7 +13,7 @@ final class ServerScope {
         var server = client.getCurrentServerEntry();
         if (server != null) return "server:" + normalize(server.address);
         if (client.getServer() != null) {
-            var folder = client.getServer().getSavePath(WorldSavePath.ROOT).getFileName();
+            var folder = client.getServer().getSavePath(WorldSavePath.ROOT).toAbsolutePath().normalize().getFileName();
             return "singleplayer:" + (folder == null ? client.getServer().getSaveProperties().getLevelName() : folder);
         }
         return "unknown";

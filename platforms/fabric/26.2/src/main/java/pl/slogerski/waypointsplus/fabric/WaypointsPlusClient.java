@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
+import pl.slogerski.waypointsplus.core.WaypointNames;
 
 public final class WaypointsPlusClient implements ClientModInitializer {
     private static final String DEATH_COLOR = "EEFF405D";
@@ -34,7 +35,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         createWaypointKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.create", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
         manageWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.manage", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
+                "key.waypointsplus.manage", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         previousProfileKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
@@ -50,7 +51,8 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 hasPlayerPosition = true;
                 boolean playerDead = client.player.getHealth() <= 0.0F;
                 if (playerDead && !wasPlayerDead && client.level != null) {
-                    config.addWaypointToProfile("Death", ServerScope.current(), "Death Waypoints",
+                    config.addWaypointToProfile(WaypointNames.death(config.settings().language),
+                            ServerScope.current(), "Death Waypoints",
                             client.level.dimension().identifier().toString(),
                             position.getX(), position.getY(), position.getZ(), DEATH_COLOR);
                 }

@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import pl.slogerski.waypointsplus.core.Waypoint;
+import pl.slogerski.waypointsplus.core.WaypointAppearance;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
@@ -74,7 +75,7 @@ final class WaypointHudRenderer {
         int textWidth = minecraft.font.width(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int background = settings.background ? settings.backgroundArgb : 0;
+        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
 
         pose.pushPose();
         pose.translate(dx, dy, dz);

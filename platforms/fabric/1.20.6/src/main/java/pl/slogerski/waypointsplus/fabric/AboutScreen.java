@@ -19,7 +19,7 @@ final class AboutScreen extends Screen {
     private int left, top;
 
     AboutScreen(Screen parent) {
-        super(Text.literal(UiText.get("About", "O modzie")));
+        super(Text.literal("Waypoints Plus"));
         this.parent = parent;
     }
 
@@ -40,7 +40,6 @@ final class AboutScreen extends Screen {
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(context, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(context, left, top, left + 300, top + 188);
         super.render(context, mouseX, mouseY, delta);

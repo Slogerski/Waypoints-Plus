@@ -31,7 +31,7 @@ final class ProfileNameScreen extends Screen {
     @Override protected void init() {
         left = width / 2 - 140;
         top = Math.max(20, height / 2 - 70);
-        name = new TextFieldWidget(textRenderer, left + 15, top + 50, 250, 10,
+        name = new TextFieldWidget(textRenderer, left + 15, top + 51, 250, 10,
                 Text.literal(UiText.get("Profile Name", "Nazwa profilu")));
         name.setDrawsBackground(false);
         name.setMaxLength(48);

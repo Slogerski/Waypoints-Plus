@@ -8,6 +8,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
+import pl.slogerski.waypointsplus.core.WaypointNames;
 
 public final class WaypointsPlusClient implements ClientModInitializer {
     private static final KeyBinding.Category CATEGORY =
@@ -36,7 +37,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         createWaypointKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.create", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
         manageWaypointsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.waypointsplus.manage", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
+                "key.waypointsplus.manage", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.reload", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         previousProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -53,7 +54,8 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 hasPlayerPosition = true;
                 boolean playerDead = client.player.getHealth() <= 0.0F;
                 if (playerDead && !wasPlayerDead && client.world != null) {
-                    config.addWaypointToProfile("Death", ServerScope.current(), "Death Waypoints",
+                    config.addWaypointToProfile(WaypointNames.death(config.settings().language),
+                            ServerScope.current(), "Death Waypoints",
                             client.world.getRegistryKey().getValue().toString(),
                             position.getX(), position.getY(), position.getZ(), DEATH_COLOR);
                 }

@@ -17,6 +17,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.Matrix4f;
 import net.minecraft.util.math.Vec3d;
 import pl.slogerski.waypointsplus.core.Waypoint;
+import pl.slogerski.waypointsplus.core.WaypointAppearance;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
@@ -76,7 +77,7 @@ final class WaypointHudRenderer {
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int background = settings.background ? settings.backgroundArgb : 0;
+        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
 
         matrices.push();
         matrices.translate(dx, dy, dz);

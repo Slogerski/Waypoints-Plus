@@ -13,7 +13,7 @@ final class ServerScope {
         var server = minecraft.getCurrentServer();
         if (server != null) return "server:" + normalize(server.ip);
         if (minecraft.getSingleplayerServer() != null) {
-            var folder = minecraft.getSingleplayerServer().getWorldPath(LevelResource.ROOT).getFileName();
+            var folder = minecraft.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
             return "singleplayer:" + (folder == null
                     ? minecraft.getSingleplayerServer().getWorldData().getLevelName()
                     : folder);
