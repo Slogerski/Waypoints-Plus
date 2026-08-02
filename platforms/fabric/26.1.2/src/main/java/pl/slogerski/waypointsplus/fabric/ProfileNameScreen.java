@@ -58,8 +58,9 @@ final class ProfileNameScreen extends Screen {
         }
     }
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(graphics, left, top, left + 280, top + 122, 0xE0141824);
         outline(graphics, left, top, left + 280, top + 122);
         roundedFill(graphics, left + 10, top + 43, left + 270, top + 67, 0xA0000000);

@@ -97,8 +97,9 @@ abstract class WaypointFormScreen extends Screen {
 
     protected abstract void persist(String name, int x, int y, int z, String color);
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);
         outline(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
         drawField(graphics, panelLeft + 10, panelTop + 46, 280, 20);

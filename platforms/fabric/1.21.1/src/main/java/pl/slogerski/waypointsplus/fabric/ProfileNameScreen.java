@@ -58,7 +58,6 @@ final class ProfileNameScreen extends Screen {
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, width, height, 0xC0080B12);
         roundedFill(context, left, top, left + 280, top + 122, 0xE0141824);
         outline(context, left, top, left + 280, top + 122);
         roundedFill(context, left + 10, top + 43, left + 270, top + 67, 0xA0000000);

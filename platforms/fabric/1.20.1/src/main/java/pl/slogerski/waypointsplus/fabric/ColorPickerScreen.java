@@ -65,8 +65,9 @@ final class ColorPickerScreen extends Screen {
         else if (dragging == 3) alpha = clamp((float)((x - left) / 180.0));
     }
 
+    @Override public void renderBackground(DrawContext context) { }
+
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, width, height, 0xE0101420);
         super.render(context, mouseX, mouseY, delta);
         int left = width / 2 - 120;
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 16, 0xFFFFFFFF);

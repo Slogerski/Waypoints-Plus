@@ -65,8 +65,9 @@ final class ColorPickerScreen extends Screen {
         else if (dragging == 3) alpha = clamp((float)((x - left) / 180.0));
     }
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        graphics.fill(0, 0, width, height, 0xE0101420);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         int left = width / 2 - 120;
         graphics.centeredText(font, title, width / 2, 16, 0xFFFFFFFF);

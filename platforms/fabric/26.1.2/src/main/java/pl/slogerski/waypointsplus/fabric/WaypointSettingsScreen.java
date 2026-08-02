@@ -93,7 +93,9 @@ final class WaypointSettingsScreen extends Screen {
             if (confirmed) WaypointsPlusClient.config().removeProfile(serverKey, profileName);
             minecraft.setScreen(this);
         }, Component.literal(UiText.get("Remove Profile?", "Usunąć profil?")),
-                Component.literal(UiText.get("Its waypoints will also be deleted.", "Jego waypointy również zostaną usunięte."))));
+                Component.literal(UiText.get("Its waypoints will also be deleted.", "Jego waypointy również zostaną usunięte."))) {
+            @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+        });
     }
 
     private EditBox field(int x, int y, int width, String value, String hint) {
