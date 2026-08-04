@@ -41,6 +41,10 @@ final class AboutScreen extends Screen {
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(context, mouseX, mouseY, delta);
+        }
         roundedFill(context, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(context, left, top, left + 300, top + 188);
         context.drawTexture(RenderLayer::getGuiTextured, AVATAR, left + 11, top + 35,
@@ -89,7 +93,8 @@ final class AboutScreen extends Screen {
         return 0xFF000000 | r << 16 | g << 8 | blue;
     }
 
-    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { }
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+    }
 
     @Override public void close() { client.setScreen(parent); }
 }

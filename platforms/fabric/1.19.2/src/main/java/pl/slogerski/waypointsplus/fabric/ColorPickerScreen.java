@@ -10,13 +10,32 @@ import java.util.function.Consumer;
 final class ColorPickerScreen extends Screen {
     private final Screen parent;
     private final Consumer<String> onApply;
+    private final Consumer<String> onMarker;
+    private final Consumer<String> onBackground;
+    private final Runnable onReset;
     private float hue, saturation, brightness, alpha;
     private int dragging;
 
     ColorPickerScreen(Screen parent, String argb, Consumer<String> onApply) {
+        this(parent, argb, onApply, null, null, null);
+    }
+
+    ColorPickerScreen(Screen parent, String argb, Consumer<String> onMarker, Consumer<String> onBackground) {
+        this(parent, argb, null, onMarker, onBackground, null);
+    }
+
+    ColorPickerScreen(Screen parent, String argb, Consumer<String> onApply, Runnable onReset) {
+        this(parent, argb, onApply, null, null, onReset);
+    }
+
+    private ColorPickerScreen(Screen parent, String argb, Consumer<String> onApply,
+                              Consumer<String> onMarker, Consumer<String> onBackground, Runnable onReset) {
         super(Text.literal(UiText.get("Color Picker", "Wybór koloru")));
         this.parent = parent;
         this.onApply = onApply;
+        this.onMarker = onMarker;
+        this.onBackground = onBackground;
+        this.onReset = onReset;
         long value = Long.parseLong(argb, 16);
         float[] hsb = Color.RGBtoHSB((int)(value >> 16) & 255, (int)(value >> 8) & 255, (int)value & 255, null);
         hue = hsb[0]; saturation = hsb[1]; brightness = hsb[2]; alpha = ((value >> 24) & 255) / 255.0f;
@@ -24,10 +43,32 @@ final class ColorPickerScreen extends Screen {
 
     @Override protected void init() {
         int left = width / 2 - 120;
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Apply", "Zastosuj")), b -> apply())
-                .dimensions(left, 210, 116, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Cancel", "Anuluj")), b -> close())
-                .dimensions(left + 124, 210, 116, 20).build());
+        if (onMarker != null) {
+            int buttonLeft = width / 2 - 150;
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Set Default Marker", "Ustaw domyślny znacznik")),
+                    b -> assign(onMarker)).dimensions(buttonLeft, 190, 146, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Set Default Background", "Ustaw domyślne tło")),
+                    b -> assign(onBackground)).dimensions(buttonLeft + 154, 190, 146, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Copy", "Kopiuj")),
+                    b -> client.keyboard.setClipboard("#" + value())).dimensions(buttonLeft, 214, 146, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")),
+                    b -> close()).dimensions(buttonLeft + 154, 214, 146, 20).build());
+            return;
+        }
+        if (onReset != null) {
+            int buttonLeft = width / 2 - 150;
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Apply", "Zastosuj")), b -> apply())
+                    .dimensions(buttonLeft, 210, 92, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Reset", "Resetuj")), b -> resetColor())
+                    .dimensions(buttonLeft + 100, 210, 100, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Cancel", "Anuluj")), b -> close())
+                    .dimensions(buttonLeft + 208, 210, 92, 20).build());
+        } else {
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Apply", "Zastosuj")), b -> apply())
+                    .dimensions(left, 210, 116, 20).build());
+            addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Cancel", "Anuluj")), b -> close())
+                    .dimensions(left + 124, 210, 116, 20).build());
+        }
     }
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -64,22 +105,29 @@ final class ColorPickerScreen extends Screen {
         else if (dragging == 3) alpha = clamp((float)((x - left) / 180.0));
     }
 
-    @Override public void renderBackground(MatrixStack matrices) { }
+    @Override public void renderBackground(MatrixStack matrices) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(matrices);
+    }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         super.render(matrices, mouseX, mouseY, delta);
         int left = width / 2 - 120;
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, 16, 0xFFFFFFFF);
-        for (int x = 0; x < 180; x += 4) for (int y = 0; y < 100; y += 4) {
+        int colorStep = pl.slogerski.waypointsplus.core.UiRenderBudget.isResizeActive(this) ? 8 : 4;
+        int sliderStep = colorStep / 2;
+        for (int x = 0; x < 180; x += colorStep) for (int y = 0; y < 100; y += colorStep) {
             int rgb = Color.HSBtoRGB(hue, x / 179.0f, 1.0f - y / 99.0f);
-            context.fill(left + x, 46 + y, left + x + 4, 46 + y + 4, 0xFF000000 | (rgb & 0xFFFFFF));
+            context.fill(left + x, 46 + y, left + Math.min(180, x + colorStep),
+                    46 + Math.min(100, y + colorStep), 0xFF000000 | (rgb & 0xFFFFFF));
         }
-        for (int x = 0; x < 180; x += 2) {
+        for (int x = 0; x < 180; x += sliderStep) {
             int rgb = Color.HSBtoRGB(x / 179.0f, 1, 1);
-            context.fill(left + x, 153, left + x + 2, 165, 0xFF000000 | (rgb & 0xFFFFFF));
+            context.fill(left + x, 153, left + Math.min(180, x + sliderStep), 165, 0xFF000000 | (rgb & 0xFFFFFF));
             int a = Math.round(x / 179.0f * 255);
-            context.fill(left + x, 174, left + x + 2, 186, (a << 24) | rgbValue());
+            context.fill(left + x, 174, left + Math.min(180, x + sliderStep), 186, (a << 24) | rgbValue());
         }
         marker(context, left + Math.round(saturation * 179), 46 + Math.round((1 - brightness) * 99), true);
         marker(context, left + Math.round(hue * 179), 159, false);
@@ -100,6 +148,8 @@ final class ColorPickerScreen extends Screen {
     private int argb() { return (Math.round(alpha * 255) << 24) | rgbValue(); }
     private String value() { return String.format("%08X", argb()); }
     private void apply() { onApply.accept(value()); client.setScreen(parent); }
+    private void resetColor() { onReset.run(); client.setScreen(parent); }
+    private void assign(Consumer<String> target) { target.accept(value()); client.setScreen(parent); }
     private static boolean inside(double x, double y, int bx, int by, int w, int h) { return x >= bx && x < bx + w && y >= by && y < by + h; }
     private static float clamp(float value) { return Math.max(0, Math.min(1, value)); }
     @Override public void close() { client.setScreen(parent); }

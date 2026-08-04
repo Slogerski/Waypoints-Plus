@@ -57,7 +57,7 @@ final class WaypointManagerScreen extends Screen {
                 .pos(left, navY).size(36, 20).build(); previous.active = page > 0; addRenderableWidget(previous);
         Button next = Button.builder(Component.literal(">"), b -> minecraft.gui.setScreen(new WaypointManagerScreen(parent, page + 1)))
                 .pos(left + 42, navY).size(36, 20).build(); next.active = page + 1 < pages; addRenderableWidget(next);
-        addRenderableWidget(Button.builder(Component.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Settings", "Ustawienia")),
                 b -> minecraft.gui.setScreen(new WaypointSettingsScreen(this))).pos(left + 84, navY).size(190, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Done", "Gotowe")), b -> onClose())
                 .pos(left + 280, navY).size(80, 20).build());
@@ -84,7 +84,12 @@ final class WaypointManagerScreen extends Screen {
         catch (RuntimeException ignored) { return 0xFFFFFFFF; }
     }
 
-    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.extractBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void onClose() { Minecraft.getInstance().gui.setScreen(parent); }
 }

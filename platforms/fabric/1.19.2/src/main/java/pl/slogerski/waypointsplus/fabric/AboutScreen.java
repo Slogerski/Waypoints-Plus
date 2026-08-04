@@ -39,6 +39,7 @@ final class AboutScreen extends Screen {
     }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         roundedFill(context, left, top, left + 300, top + 188, 0xE0141824);
         gradientOutline(context, left, top, left + 300, top + 188);
@@ -87,7 +88,10 @@ final class AboutScreen extends Screen {
         return 0xFF000000 | r << 16 | g << 8 | blue;
     }
 
-    @Override public void renderBackground(MatrixStack matrices) { }
+    @Override public void renderBackground(MatrixStack matrices) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(matrices);
+    }
 
     @Override public void close() { client.setScreen(parent); }
 }

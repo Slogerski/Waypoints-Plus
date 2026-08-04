@@ -7,31 +7,20 @@ public final class WaypointAppearance {
     private WaypointAppearance() {
     }
 
-    public static int backgroundArgb(Waypoint waypoint, int defaultArgb) {
+    public static int backgroundArgb(Waypoint waypoint, int defaultArgb, int markerArgb, int markerTintPercent) {
         int baseArgb = DEATH_PROFILE.equals(waypoint.profile()) ? DEATH_BACKGROUND_ARGB : defaultArgb;
-        Integer markerArgb = parseArgb(waypoint.colorArgb());
-        return markerArgb == null ? baseArgb : blendMarkerIntoBackground(baseArgb, markerArgb);
+        if (markerTintPercent <= 0) return baseArgb;
+        return blendMarkerIntoBackground(baseArgb, markerArgb, Math.min(markerTintPercent, 100));
     }
 
-    private static int blendMarkerIntoBackground(int backgroundArgb, int markerArgb) {
-        int red = blendChannel(backgroundArgb >>> 16, markerArgb >>> 16);
-        int green = blendChannel(backgroundArgb >>> 8, markerArgb >>> 8);
-        int blue = blendChannel(backgroundArgb, markerArgb);
+    private static int blendMarkerIntoBackground(int backgroundArgb, int markerArgb, int percent) {
+        int red = blendChannel(backgroundArgb >>> 16, markerArgb >>> 16, percent);
+        int green = blendChannel(backgroundArgb >>> 8, markerArgb >>> 8, percent);
+        int blue = blendChannel(backgroundArgb, markerArgb, percent);
         return (backgroundArgb & 0xFF000000) | (red << 16) | (green << 8) | blue;
     }
 
-    private static int blendChannel(int background, int marker) {
-        return ((background & 0xFF) * 3 + (marker & 0xFF) + 2) / 4;
-    }
-
-    private static Integer parseArgb(String value) {
-        if (value == null) return null;
-        String hex = value.replace("#", "");
-        if (hex.length() != 6 && hex.length() != 8) return null;
-        try {
-            return (int) Long.parseLong(hex, 16);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+    private static int blendChannel(int background, int marker, int percent) {
+        return ((background & 0xFF) * (100 - percent) + (marker & 0xFF) * percent + 50) / 100;
     }
 }

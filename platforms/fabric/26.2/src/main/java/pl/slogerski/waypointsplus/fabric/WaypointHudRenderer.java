@@ -93,7 +93,9 @@ final class WaypointHudRenderer {
         Component text = Component.literal(label);
         int textWidth = minecraft.font.width(text);
         float x = -textWidth / 2.0f;
-        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
+        int background = settings.background
+                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
+                : 0;
 
         pose.pushPose();
         pose.translate(dx, dy, dz);

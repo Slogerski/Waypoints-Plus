@@ -58,7 +58,12 @@ final class ProfileNameScreen extends Screen {
         }
     }
 
-    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.extractBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         roundedFill(graphics, left, top, left + 280, top + 122, 0xE0141824);

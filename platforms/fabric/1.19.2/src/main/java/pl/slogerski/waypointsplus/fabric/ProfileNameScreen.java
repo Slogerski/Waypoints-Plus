@@ -56,9 +56,13 @@ final class ProfileNameScreen extends Screen {
         }
     }
 
-    @Override public void renderBackground(MatrixStack matrices) { }
+    @Override public void renderBackground(MatrixStack matrices) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(matrices);
+    }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         roundedFill(context, left, top, left + 280, top + 122, 0xE0141824);
         outline(context, left, top, left + 280, top + 122);

@@ -4,7 +4,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 final class WaypointSettingsScreen extends Screen {
@@ -12,23 +11,22 @@ final class WaypointSettingsScreen extends Screen {
     private static final int FIELD_ACCENT = 0xFFC43D9D;
     private final Screen parent;
     private final int requestedProfileIndex;
-    private final WaypointSettingsSnapshot originalSettings;
-    private TextFieldWidget scale, markerColor, backgroundColor;
+    private final Session session;
+    private ButtonWidget saveButton;
     private int left, top;
     private int profileIndex;
     private String profileName = "Default";
     private boolean virtualProfile;
-    private boolean saved;
 
     WaypointSettingsScreen(Screen parent) {
-        this(parent, -1, WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings()));
+        this(parent, -1, new Session());
     }
 
-    private WaypointSettingsScreen(Screen parent, int profileIndex, WaypointSettingsSnapshot originalSettings) {
+    private WaypointSettingsScreen(Screen parent, int profileIndex, Session session) {
         super(Text.literal(UiText.get("Waypoint Settings", "Ustawienia waypointów")));
         this.parent = parent;
         this.requestedProfileIndex = profileIndex;
-        this.originalSettings = originalSettings;
+        this.session = session;
     }
 
     @Override protected void init() {
@@ -55,36 +53,43 @@ final class WaypointSettingsScreen extends Screen {
             return;
         }
         ButtonWidget edit = addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Edit", "Edytuj")),
-                b -> client.setScreen(new ProfileNameScreen(this, parent, profileName)))
+                b -> openProfileEditor())
                 .dimensions(left + 10, top + 52, 136, 20).build());
         ButtonWidget remove = addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Remove", "Usuń")),
-                b -> confirmRemoveProfile(serverKey))
+                b -> {
+                    applyFields();
+                    confirmRemoveProfile(serverKey);
+                })
                 .dimensions(left + 154, top + 52, 136, 20).build());
         edit.active = remove.active = !"Default".equals(profileName);
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Language: English", "Język: polski")), b -> {
+            applyFields();
             settings.language = "pl".equals(settings.language) ? "en" : "pl";
-            client.setScreen(new WaypointSettingsScreen(parent, profileIndex, originalSettings));
+            markDirty();
+            client.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
         }).dimensions(left + 10, top + 84, 280, 20).build());
         addToggle(left + 10, top + 108, 136, UiText.get("Background", "Tło"), settings.background, v -> settings.background = v);
         addToggle(left + 154, top + 108, 136, UiText.get("Coordinates", "Koordynaty"), settings.showCoordinates, v -> settings.showCoordinates = v);
         addToggle(left + 10, top + 132, 136, UiText.get("Distance", "Odległość"), settings.showDistance, v -> settings.showDistance = v);
         addToggle(left + 154, top + 132, 136, UiText.get("Laser", "Laser"), settings.laserEnabled, v -> settings.laserEnabled = v);
 
-        scale = field(left + 10, top + 168, 88, String.valueOf(settings.scale), "Scale");
-        markerColor = field(left + 106, top + 168, 88, String.format("%08X", settings.markerArgb), "Marker");
-        backgroundColor = field(left + 202, top + 168, 88, String.format("%08X", settings.backgroundArgb), "Background");
+        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
+                b -> openAdvancedSettings())
+                .dimensions(left + 10, top + 168, 280, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("About", "O modzie")),
-                b -> client.setScreen(new AboutScreen(this)))
+                b -> openAbout())
                 .dimensions(left + 10, top + 192, 280, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Save", "Zapisz")), b -> save())
+        saveButton = addDrawableChild(ButtonWidget.builder(saveLabel(), b -> save())
                 .dimensions(left + 10, top + 216, 136, 20).build());
+        saveButton.active = session.dirty;
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Exit", "Wyjdź")), b -> close())
                 .dimensions(left + 154, top + 216, 136, 20).build());
     }
 
     private void openProfile(int index, int size, String serverKey) {
+        applyFields();
         if (index < size) WaypointsPlusClient.config().selectProfile(serverKey, index);
-        client.setScreen(new WaypointSettingsScreen(parent, index, originalSettings));
+        client.setScreen(new WaypointSettingsScreen(parent, index, session));
     }
 
     private void confirmRemoveProfile(String serverKey) {
@@ -93,57 +98,83 @@ final class WaypointSettingsScreen extends Screen {
             client.setScreen(this);
         }, Text.literal(UiText.get("Remove Profile?", "Usunąć profil?")),
                 Text.literal(UiText.get("Its waypoints will also be deleted.", "Jego waypointy również zostaną usunięte."))) {
-            @Override public void renderBackground(DrawContext context) { }
+            @Override public void renderBackground(DrawContext context) {
+                if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                        WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(context);
+            }
         });
-    }
-
-    private TextFieldWidget field(int x, int y, int width, String value, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 6, width - 10, 10, Text.literal(hint));
-        field.setDrawsBackground(false);
-        field.setText(value);
-        addDrawableChild(field);
-        return field;
     }
 
     private void addToggle(int x, int y, int width, String name, boolean value, Setter setter) {
         addDrawableChild(ButtonWidget.builder(Text.literal(name + ": " + (value ? "ON" : "OFF")), b -> {
+            applyFields();
             setter.set(!value);
-            client.setScreen(new WaypointSettingsScreen(parent, profileIndex, originalSettings));
+            markDirty();
+            client.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
         }).dimensions(x, y, width, 20).build());
     }
 
-    private void save() {
-        WaypointSettings settings = WaypointsPlusClient.config().settings();
-        try { settings.scale = Math.max(0.25f, Math.min(4.0f, Float.parseFloat(scale.getText().replace(',', '.')))); }
-        catch (NumberFormatException ignored) { }
-        try { settings.markerArgb = (int)Long.parseLong(markerColor.getText().replace("#", ""), 16); }
-        catch (NumberFormatException ignored) { }
-        try { settings.backgroundArgb = (int)Long.parseLong(backgroundColor.getText().replace("#", ""), 16); }
-        catch (NumberFormatException ignored) { }
-        saved = true;
+    void save() {
+        applyFields();
+        saveAdvanced();
+    }
+
+    void saveAdvanced() {
         WaypointsPlusClient.config().saveSettings();
-        close();
+        session.saved();
+        updateSaveButton();
+    }
+
+    private void openAdvancedSettings() {
+        applyFields();
+        client.setScreen(new AdvancedSettingsScreen(this));
+    }
+
+    private void openProfileEditor() {
+        applyFields();
+        client.setScreen(new ProfileNameScreen(this, parent, profileName));
+    }
+
+    private void openAbout() {
+        applyFields();
+        client.setScreen(new AboutScreen(this));
+    }
+
+    private void applyFields() {
+    }
+
+    void markDirty() {
+        session.dirty = true;
+        updateSaveButton();
+    }
+
+    boolean hasUnsavedChanges() {
+        return session.dirty;
+    }
+
+    private Text saveLabel() {
+        return Text.literal(session.dirty
+                ? UiText.get("Not Saved", "Niezapisane")
+                : UiText.get("Saved", "Zapisano"));
+    }
+
+    private void updateSaveButton() {
+        if (saveButton == null) return;
+        saveButton.setMessage(saveLabel());
+        saveButton.active = session.dirty;
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        renderBackground(context);
         int bottom = virtualProfile ? top + 150 : top + 250;
-        roundedFill(context, left, top, left + 300, bottom, 0xE0141824);
-        gradientOutline(context, left, top, left + 300, bottom);
-        if (!virtualProfile) {
-            fieldBox(context, left + 10, top + 168, 88, 20);
-            fieldBox(context, left + 106, top + 168, 88, 20);
-            fieldBox(context, left + 202, top + 168, 88, 20);
-        }
+        drawPanel(context, left, top, left + 300, bottom);
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 8, MAGENTA);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
-        context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 10, top + 156, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Marker", "Domyślny znacznik"), left + 106, top + 156, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Background ARGB", "Tło ARGB"), left + 202, top + 156, 0xFFD9E2F0);
     }
 
-    private static void fieldBox(DrawContext context, int x, int y, int width, int height) {
+    static void fieldBox(DrawContext context, int x, int y, int width, int height) {
         roundedFill(context, x, y, x + width, y + height, 0xA0000000);
         context.fill(x + 2, y, x + width - 2, y + 1, FIELD_ACCENT);
         context.fill(x + 2, y + height - 1, x + width - 2, y + height, FIELD_ACCENT);
@@ -183,11 +214,30 @@ final class WaypointSettingsScreen extends Screen {
         context.fill(left, top + 2, right, bottom - 2, color);
     }
 
-    @Override public void renderBackground(DrawContext context) { }
+    @Override public void renderBackground(DrawContext context) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(context);
+    }
 
     @Override public void close() {
-        if (!saved) originalSettings.restore(WaypointsPlusClient.config().settings());
+        if (session.dirty) session.baseline.restore(WaypointsPlusClient.config().settings());
         client.setScreen(parent);
+    }
+
+    static void drawPanel(DrawContext context, int left, int top, int right, int bottom) {
+        roundedFill(context, left, top, right, bottom, 0xE0141824);
+        gradientOutline(context, left, top, right, bottom);
+    }
+
+    private static final class Session {
+        private WaypointSettingsSnapshot baseline =
+                WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
+        private boolean dirty;
+
+        private void saved() {
+            baseline = WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
+            dirty = false;
+        }
     }
     @FunctionalInterface private interface Setter { void set(boolean value); }
 }

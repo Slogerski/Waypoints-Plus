@@ -49,6 +49,7 @@ final class WaypointHudRenderer {
             if (settings.laserEnabled) {
                 drawLaser(pose, buffers, cameraPos, target,
                         parseArgb(waypoint.colorArgb(), settings.markerArgb));
+                buffers.endBatch(RenderTypes.debugQuads());
             }
             renderLabel(minecraft, pose, buffers, camera, cameraPos, waypoint, target, settings);
         }
@@ -75,17 +76,21 @@ final class WaypointHudRenderer {
         int textWidth = minecraft.font.width(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
+        int background = settings.background
+                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
+                : 0;
 
         pose.pushPose();
         pose.translate(dx, dy, dz);
         pose.mulPose(camera.rotation());
         pose.scale(scale, -scale, scale);
+
         drawRoundedPanel(buffers, pose.last().pose(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
         buffers.endBatch(RenderTypes.textBackgroundSeeThrough());
         minecraft.font.drawInBatch(text, x, -4.0f, color, false, pose.last().pose(),
                 buffers, Font.DisplayMode.SEE_THROUGH, 0, FULL_BRIGHT);
+        buffers.endBatch();
         pose.popPose();
     }
 

@@ -57,7 +57,12 @@ final class ProfileNameScreen extends Screen {
         }
     }
 
-    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { }
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(context, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         roundedFill(context, left, top, left + 280, top + 122, 0xE0141824);

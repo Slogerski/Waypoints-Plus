@@ -41,7 +41,12 @@ final class AboutScreen extends Screen {
                 .pos(left + 10, top + 158).size(280, 20).build());
     }
 
-    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.extractBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         roundedFill(graphics, left, top, left + 300, top + 188, 0xE0141824);

@@ -96,9 +96,14 @@ abstract class WaypointFormScreen extends Screen {
 
     protected abstract void persist(String name, int x, int y, int z, String color);
 
-    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { }
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+    }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(context, mouseX, mouseY, delta);
+        }
         roundedFill(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);
         outline(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
         drawField(context, panelLeft + 10, panelTop + 46, 280, 20);

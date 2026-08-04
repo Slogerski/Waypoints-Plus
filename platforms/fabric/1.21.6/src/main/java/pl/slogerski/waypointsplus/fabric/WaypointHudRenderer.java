@@ -49,6 +49,7 @@ final class WaypointHudRenderer {
             if (settings.laserEnabled) {
                 drawLaser(matrices, buffers, cameraPos, target,
                         parseArgb(waypoint.colorArgb(), settings.markerArgb));
+                buffers.draw(RenderLayer.getDebugQuads());
             }
             renderLabel(client, matrices, buffers, camera, cameraPos, waypoint, target, settings);
         }
@@ -76,17 +77,21 @@ final class WaypointHudRenderer {
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
+        int background = settings.background
+                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
+                : 0;
 
         matrices.push();
         matrices.translate(dx, dy, dz);
         matrices.multiply(camera.getRotation());
         matrices.scale(scale, -scale, scale);
+
         drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
         buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
         client.textRenderer.draw(text, x, -4.0f, color, false, matrices.peek().getPositionMatrix(),
                 buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        buffers.draw();
         matrices.pop();
     }
 

@@ -1,11 +1,17 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
@@ -76,24 +82,43 @@ final class WaypointHudRenderer {
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
+        int background = settings.background
+                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
+                : 0;
 
         matrices.push();
         matrices.translate(dx, dy, dz);
         matrices.multiply(camera.getRotation());
         matrices.scale(-scale, -scale, scale);
-        drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        drawRoundedPanel(matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
-        buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
+
+        VertexConsumerProvider.Immediate textBuffers =
+                VertexConsumerProvider.immediate(new BufferBuilder(512));
         client.textRenderer.draw(text, x, -4.0f, color, false, matrices.peek().getPositionMatrix(),
-                buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+                textBuffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        textBuffers.draw();
+
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
         matrices.pop();
     }
 
-    private static void drawRoundedPanel(VertexConsumerProvider buffers, Matrix4f matrix,
+    private static void drawRoundedPanel(Matrix4f matrix,
                                          float left, float top, float right, float bottom,
                                          int background, int border) {
-        VertexConsumer vertices = buffers.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        BufferBuilder vertices = Tessellator.getInstance().getBuffer();
+        vertices.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         if ((background >>> 24) != 0) {
             quad(vertices, matrix, left + 2, top + 1, right - 2, top + 2, 0.01f, background);
             quad(vertices, matrix, left + 1, top + 2, right - 1, bottom - 2, 0.01f, background);
@@ -107,6 +132,7 @@ final class WaypointHudRenderer {
         quad(vertices, matrix, right - 2, top + 1, right - 1, top + 2, 0.01f, border);
         quad(vertices, matrix, left + 1, bottom - 2, left + 2, bottom - 1, 0.01f, border);
         quad(vertices, matrix, right - 2, bottom - 2, right - 1, bottom - 1, 0.01f, border);
+        Tessellator.getInstance().draw();
     }
 
     private static void drawLaser(MatrixStack matrices, VertexConsumerProvider buffers, Vec3d cameraPos,
@@ -130,7 +156,7 @@ final class WaypointHudRenderer {
         matrices.pop();
     }
 
-    private static void quad(VertexConsumer vertices, Matrix4f matrix, float left, float top,
+    private static void quad(BufferBuilder vertices, Matrix4f matrix, float left, float top,
                              float right, float bottom, float z, int color) {
         vertices.vertex(matrix, left, top, z).color(color).light(FULL_BRIGHT).next();
         vertices.vertex(matrix, left, bottom, z).color(color).light(FULL_BRIGHT).next();

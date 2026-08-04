@@ -97,7 +97,12 @@ abstract class WaypointFormScreen extends Screen {
 
     protected abstract void persist(String name, int x, int y, int z, String color);
 
-    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) { }
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.extractBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         roundedFill(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);

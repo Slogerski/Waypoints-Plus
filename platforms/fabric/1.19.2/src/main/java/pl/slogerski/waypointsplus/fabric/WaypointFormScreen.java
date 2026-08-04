@@ -95,9 +95,13 @@ abstract class WaypointFormScreen extends Screen {
 
     protected abstract void persist(String name, int x, int y, int z, String color);
 
-    @Override public void renderBackground(MatrixStack matrices) { }
+    @Override public void renderBackground(MatrixStack matrices) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(matrices);
+    }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+        renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         roundedFill(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);
         outline(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());

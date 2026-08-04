@@ -75,7 +75,9 @@ final class WaypointHudRenderer {
         Text text = Text.literal(label);
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
-        int background = settings.background ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb) : 0;
+        int background = settings.background
+                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
+                : 0;
 
         matrices.push();
         matrices.translate(dx, dy, dz);

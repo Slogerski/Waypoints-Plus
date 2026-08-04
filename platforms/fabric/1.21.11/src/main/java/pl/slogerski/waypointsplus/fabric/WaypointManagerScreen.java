@@ -60,7 +60,7 @@ final class WaypointManagerScreen extends Screen {
                 .dimensions(left, navY, 36, 20).build()).active = page > 0;
         addDrawableChild(ButtonWidget.builder(Text.literal(">"), b -> client.setScreen(new WaypointManagerScreen(parent, page + 1)))
                 .dimensions(left + 42, navY, 36, 20).build()).active = page + 1 < pages;
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
+        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Settings", "Ustawienia")),
                 b -> client.setScreen(new WaypointSettingsScreen(this))).dimensions(left + 84, navY, 190, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Done", "Gotowe")), b -> close())
                 .dimensions(left + 280, navY, 80, 20).build());
@@ -90,7 +90,12 @@ final class WaypointManagerScreen extends Screen {
         catch (RuntimeException ignored) { return 0xFFFFFFFF; }
     }
 
-    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) { }
+    @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(context, mouseX, mouseY, delta);
+        }
+    }
 
     @Override public void close() { client.setScreen(parent); }
 }
