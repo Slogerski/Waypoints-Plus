@@ -26,7 +26,7 @@ final class AdvancedSettingsScreen extends Screen {
 
     @Override protected void init() {
         left = width / 2 - 158;
-        top = Math.max(2, (height - 282) / 2);
+        top = Math.max(2, (height - 258) / 2);
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         addRenderableWidget(Button.builder(Component.literal(
                         UiText.get("Blurred Background", "Rozmyte tło") + ": " + (settings.menuBackground ? "ON" : "OFF")),
@@ -41,7 +41,7 @@ final class AdvancedSettingsScreen extends Screen {
         backgroundColor = field(left + 224, top + 134, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setResponder(value -> applyArgb(value, false));
-        markerTint = new EditBox(font, left + 229, top + 169, 72, 10,
+        markerTint = new EditBox(font, left + 229, top + 170, 72, 10,
                 Component.literal(UiText.get("Marker Tint", "Zabarwienie znacznika")));
         markerTint.setBordered(false);
         markerTint.setMaxLength(3);
@@ -64,12 +64,12 @@ final class AdvancedSettingsScreen extends Screen {
                 .pos(left + 154, top + 134).size(64, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
-                .pos(left + 10, top + 224).size(296, 20).build());
+                .pos(left + 10, top + 200).size(296, 20).build());
         saveButton = addRenderableWidget(Button.builder(saveLabel(), button -> save())
-                .pos(left + 10, top + 248).size(144, 20).build());
+                .pos(left + 10, top + 224).size(144, 20).build());
         saveButton.active = settingsScreen.hasUnsavedChanges();
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Back", "Wróć")), button -> onClose())
-                .pos(left + 162, top + 248).size(144, 20).build());
+                .pos(left + 162, top + 224).size(144, 20).build());
     }
 
     private void save() {
@@ -84,7 +84,7 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     private EditBox field(int x, int y, int width, String value, String hint) {
-        EditBox field = new EditBox(font, x + 5, y + 5, width - 10, 10, Component.literal(hint));
+        EditBox field = new EditBox(font, x + 5, y + 6, width - 10, 10, Component.literal(hint));
         field.setBordered(false);
         field.setValue(value);
         addRenderableWidget(field);
@@ -196,7 +196,7 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        WaypointSettingsScreen.drawPanel(graphics, left, top, left + 316, top + 280);
+        WaypointSettingsScreen.drawPanel(graphics, left, top, left + 316, top + 256);
         advancedFieldBox(graphics, left + 224, top + 74, 82, 20);
         advancedFieldBox(graphics, left + 224, top + 104, 82, 20);
         advancedFieldBox(graphics, left + 224, top + 134, 82, 20);

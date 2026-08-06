@@ -25,7 +25,7 @@ final class AdvancedSettingsScreen extends Screen {
 
     @Override protected void init() {
         left = width / 2 - 158;
-        top = Math.max(2, (height - 282) / 2);
+        top = Math.max(2, (height - 258) / 2);
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         addDrawableChild(ButtonWidget.builder(Text.literal(
                         UiText.get("Blurred Background", "Rozmyte tło") + ": " + (settings.menuBackground ? "ON" : "OFF")),
@@ -40,7 +40,7 @@ final class AdvancedSettingsScreen extends Screen {
         backgroundColor = field(left + 224, top + 134, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setChangedListener(value -> applyArgb(value, false));
-        markerTint = new TextFieldWidget(textRenderer, left + 229, top + 169, 72, 10,
+        markerTint = new TextFieldWidget(textRenderer, left + 229, top + 170, 72, 10,
                 Text.literal(UiText.get("Marker Tint", "Zabarwienie znacznika")));
         markerTint.setDrawsBackground(false);
         markerTint.setMaxLength(3);
@@ -56,12 +56,12 @@ final class AdvancedSettingsScreen extends Screen {
                 .dimensions(left + 154, top + 134, 64, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
-                .dimensions(left + 10, top + 224, 296, 20).build());
+                .dimensions(left + 10, top + 200, 296, 20).build());
         saveButton = addDrawableChild(ButtonWidget.builder(saveLabel(), button -> save())
-                .dimensions(left + 10, top + 248, 144, 20).build());
+                .dimensions(left + 10, top + 224, 144, 20).build());
         saveButton.active = settingsScreen.hasUnsavedChanges();
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")), button -> close())
-                .dimensions(left + 162, top + 248, 144, 20).build());
+                .dimensions(left + 162, top + 224, 144, 20).build());
     }
 
     private void save() {
@@ -76,7 +76,7 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     private TextFieldWidget field(int x, int y, int width, String value, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 5, width - 10, 10, Text.literal(hint));
+        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 6, width - 10, 10, Text.literal(hint));
         field.setDrawsBackground(false);
         field.setText(value);
         addDrawableChild(field);
@@ -185,7 +185,7 @@ final class AdvancedSettingsScreen extends Screen {
                 WaypointsPlusClient.config().settings().menuBackground)) {
             super.renderBackground(context, mouseX, mouseY, delta);
         }
-        WaypointSettingsScreen.drawPanel(context, left, top, left + 316, top + 280);
+        WaypointSettingsScreen.drawPanel(context, left, top, left + 316, top + 256);
         advancedFieldBox(context, left + 224, top + 74, 82, 20);
         advancedFieldBox(context, left + 224, top + 104, 82, 20);
         advancedFieldBox(context, left + 224, top + 134, 82, 20);

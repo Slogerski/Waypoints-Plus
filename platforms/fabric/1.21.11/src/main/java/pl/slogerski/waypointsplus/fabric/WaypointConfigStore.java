@@ -45,6 +45,7 @@ final class WaypointConfigStore {
     private Path loadedWaypointFile;
     private long lastWaypointCheck;
     private long waypointModified;
+    private long waypointRevision;
 
     List<Waypoint> waypoints() {
         ensureServerLoaded(ServerScope.current());
@@ -52,6 +53,8 @@ final class WaypointConfigStore {
     }
 
     WaypointSettings settings() { return settings; }
+
+    long waypointRevision() { return waypointRevision; }
 
     void addWaypoint(String name, String serverKey, String dimension, int x, int y, int z, String colorArgb) {
         addWaypointToProfile(name, serverKey, activeProfile(serverKey), dimension, x, y, z, colorArgb);
@@ -174,6 +177,7 @@ final class WaypointConfigStore {
         loadedServerKey = null;
         loadedWaypointFile = null;
         waypoints = new ArrayList<>();
+        waypointRevision++;
         legacyWaypoints = new ArrayList<>();
         try {
             Files.createDirectories(waypointDirectory);
@@ -256,6 +260,7 @@ final class WaypointConfigStore {
             loadedServerKey = key;
             loadedWaypointFile = file;
             waypoints = loaded;
+            waypointRevision++;
             waypointModified = Files.getLastModifiedTime(file).toMillis();
         } catch (IOException | RuntimeException ignored) {
             replaceBrokenServerFile(key);
@@ -266,6 +271,7 @@ final class WaypointConfigStore {
         try {
             List<Waypoint> loaded = readServerWaypoints(loadedWaypointFile);
             waypoints = loaded;
+            waypointRevision++;
             waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
         } catch (IOException | RuntimeException ignored) {
             replaceBrokenServerFile(loadedServerKey);
@@ -277,6 +283,7 @@ final class WaypointConfigStore {
             createFreshServerFile(normalizeServerKey(serverKey));
         } catch (RuntimeException ignored) {
             waypoints = new ArrayList<>();
+            waypointRevision++;
             loadedWaypointFile = null;
         }
     }
@@ -389,6 +396,7 @@ final class WaypointConfigStore {
             if (loadedWaypointFile == null) return;
         }
         writeServerWaypoints(loadedWaypointFile, waypoints);
+        waypointRevision++;
         try {
             waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
         } catch (IOException ignored) { }

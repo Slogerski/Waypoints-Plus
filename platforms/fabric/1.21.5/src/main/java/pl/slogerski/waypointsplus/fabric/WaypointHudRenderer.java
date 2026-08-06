@@ -15,9 +15,18 @@ import org.joml.Matrix4f;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
+    private static final double VIEW_CULL_DOT = -0.15;
+    private static long cachedRevision = Long.MIN_VALUE;
+    private static String cachedServerKey;
+    private static String cachedProfile;
+    private static String cachedDimension;
+    private static List<PreparedWaypoint> cachedWaypoints = List.of();
 
     private WaypointHudRenderer() { }
 
@@ -42,16 +51,23 @@ final class WaypointHudRenderer {
         Vec3d cameraPos = camera.getPos();
         VertexConsumerProvider.Immediate buffers = client.getBufferBuilders().getEntityVertexConsumers();
 
-        for (Waypoint waypoint : store.waypoints()) {
-            if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
-            DisplayTarget target = convert(waypoint, dimension);
-            if (target == null) continue;
-            if (settings.laserEnabled) {
-                drawLaser(matrices, buffers, cameraPos, target,
-                        parseArgb(waypoint.colorArgb(), settings.markerArgb));
-                buffers.draw(RenderLayer.getDebugQuads());
+        List<PreparedWaypoint> visible = new ArrayList<>();
+        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension)) {
+            if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
+                    prepared.target())) {
+                visible.add(prepared);
             }
-            renderLabel(client, matrices, buffers, camera, cameraPos, waypoint, target, settings);
+        }
+        if (settings.laserEnabled) {
+            for (PreparedWaypoint prepared : visible) {
+                drawLaser(matrices, buffers, cameraPos, prepared.target(),
+                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
+            }
+            if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
+        }
+        for (PreparedWaypoint prepared : visible) {
+            renderLabel(client, matrices, buffers, camera, cameraPos,
+                    prepared.waypoint(), prepared.target(), settings);
         }
         buffers.draw();
     }
@@ -89,7 +105,7 @@ final class WaypointHudRenderer {
         drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
         buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
-        client.textRenderer.draw(text, x, -4.0f, color, false, matrices.peek().getPositionMatrix(),
+        client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
                 buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
         buffers.draw();
         matrices.pop();
@@ -143,6 +159,44 @@ final class WaypointHudRenderer {
         vertices.vertex(matrix, right, top, z).color(color).light(FULL_BRIGHT);
     }
 
+    private static List<PreparedWaypoint> activeWaypoints(WaypointConfigStore store, String serverKey,
+                                                          String profile, String dimension) {
+        long revision = store.waypointRevision();
+        if (revision == cachedRevision && serverKey.equals(cachedServerKey)
+                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)) {
+            return cachedWaypoints;
+        }
+        List<PreparedWaypoint> prepared = new ArrayList<>();
+        for (Waypoint waypoint : store.waypoints()) {
+            if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
+            DisplayTarget target = convert(waypoint, dimension);
+            if (target != null) prepared.add(new PreparedWaypoint(waypoint, target));
+        }
+        cachedRevision = revision;
+        cachedServerKey = serverKey;
+        cachedProfile = profile;
+        cachedDimension = dimension;
+        cachedWaypoints = List.copyOf(prepared);
+        return cachedWaypoints;
+    }
+
+    private static boolean isInView(float yawDegrees, float pitchDegrees,
+                                    double cameraX, double cameraY, double cameraZ,
+                                    DisplayTarget target) {
+        double dx = target.x - cameraX;
+        double dy = target.y + 1.5 - cameraY;
+        double dz = target.z - cameraZ;
+        double lengthSquared = dx * dx + dy * dy + dz * dz;
+        if (lengthSquared < 1.0e-6) return true;
+        double yaw = Math.toRadians(yawDegrees);
+        double pitch = Math.toRadians(pitchDegrees);
+        double cosPitch = Math.cos(pitch);
+        double dot = (dx * (-Math.sin(yaw) * cosPitch)
+                + dy * -Math.sin(pitch)
+                + dz * (Math.cos(yaw) * cosPitch)) / Math.sqrt(lengthSquared);
+        return dot >= VIEW_CULL_DOT;
+    }
+
     private static DisplayTarget convert(Waypoint waypoint, String currentDimension) {
         if (currentDimension.equals(waypoint.dimension())) return new DisplayTarget(waypoint.x(), waypoint.y(), waypoint.z());
         if ("minecraft:overworld".equals(currentDimension) && "minecraft:the_nether".equals(waypoint.dimension())) {
@@ -160,10 +214,12 @@ final class WaypointHudRenderer {
     }
 
     private static String formatDistance(double distance) {
-        return distance >= 1000.0
-                ? String.format(java.util.Locale.ROOT, "%.1f km", distance / 1000.0)
-                : Math.round(distance) + " m";
+        if (distance < 1000.0) return Math.round(distance) + " m";
+        String formatted = String.format(java.util.Locale.ROOT, "%.1f km", distance / 1000.0);
+        return UiText.get(formatted, formatted.replace('.', ','));
     }
+
+    private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
 
     private record DisplayTarget(double x, double y, double z) { }
 }
