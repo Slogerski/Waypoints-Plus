@@ -69,9 +69,9 @@ final class WaypointHudRenderer {
                 drawLaser(matrices, buffers, cameraPos, prepared.target(),
                         parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
             }
+            if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
         }
         if (!visible.isEmpty()) renderLabels(client, matrices, camera, cameraPos, visible, settings);
-        buffers.draw();
     }
 
     private static void renderLabels(MinecraftClient client, MatrixStack matrices, Camera camera,

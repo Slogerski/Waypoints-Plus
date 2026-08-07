@@ -9,6 +9,7 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
@@ -21,8 +22,13 @@ import java.util.List;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
+    private static final int LABEL_BUFFER_SIZE = 786432;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
+    private static final BufferAllocator PANEL_ALLOCATOR = new BufferAllocator(LABEL_BUFFER_SIZE);
+    private static final BufferAllocator TEXT_ALLOCATOR = new BufferAllocator(LABEL_BUFFER_SIZE);
+    private static final VertexConsumerProvider.Immediate PANEL_BUFFERS = VertexConsumerProvider.immediate(PANEL_ALLOCATOR);
+    private static final VertexConsumerProvider.Immediate TEXT_BUFFERS = VertexConsumerProvider.immediate(TEXT_ALLOCATOR);
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
@@ -67,17 +73,20 @@ final class WaypointHudRenderer {
             if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
         }
         for (PreparedWaypoint prepared : visible) {
-            renderLabel(client, matrices, buffers, camera, cameraPos,
+            renderLabel(client, matrices, PANEL_BUFFERS, TEXT_BUFFERS, camera, cameraPos,
                     prepared.waypoint(), prepared.target(), settings);
         }
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
-        buffers.draw();
+        PANEL_BUFFERS.draw();
+        TEXT_BUFFERS.draw();
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
     }
 
-    private static void renderLabel(MinecraftClient client, MatrixStack matrices, VertexConsumerProvider.Immediate buffers,
+    private static void renderLabel(MinecraftClient client, MatrixStack matrices,
+                                    VertexConsumerProvider.Immediate panelBuffers,
+                                    VertexConsumerProvider.Immediate textBuffers,
                                     Camera camera, Vec3d cameraPos, Waypoint waypoint,
                                     DisplayTarget target, WaypointSettings settings) {
         double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
@@ -107,10 +116,10 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(scale, -scale, scale);
 
-        drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+        drawRoundedPanel(panelBuffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
         client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
-                buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+                textBuffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
         matrices.pop();
     }
 
