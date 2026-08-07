@@ -2,6 +2,7 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.Camera;
@@ -28,6 +29,7 @@ final class WaypointHudRenderer {
     private static final BufferAllocator TEXT_ALLOCATOR = new BufferAllocator(LABEL_BUFFER_SIZE);
     private static final VertexConsumerProvider.Immediate PANEL_BUFFERS = VertexConsumerProvider.immediate(PANEL_ALLOCATOR);
     private static final VertexConsumerProvider.Immediate TEXT_BUFFERS = VertexConsumerProvider.immediate(TEXT_ALLOCATOR);
+    private static final boolean VULKAN_RENDERER = FabricLoader.getInstance().isModLoaded("vulkanmod");
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
@@ -37,7 +39,7 @@ final class WaypointHudRenderer {
     private WaypointHudRenderer() { }
 
     static void register() {
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
+        WorldRenderEvents.LAST.register(WaypointHudRenderer::render);
     }
 
     private static void render(WorldRenderContext context) {
@@ -71,12 +73,25 @@ final class WaypointHudRenderer {
             }
             if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
         }
-        for (PreparedWaypoint prepared : visible) {
-            renderLabel(client, matrices, PANEL_BUFFERS, TEXT_BUFFERS, camera, cameraPos,
-                    prepared.waypoint(), prepared.target(), settings);
+        if (VULKAN_RENDERER) {
+            for (PreparedWaypoint prepared : visible) {
+                renderLabel(client, matrices, buffers, null, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
+            for (PreparedWaypoint prepared : visible) {
+                renderLabel(client, matrices, null, buffers, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            buffers.draw();
+        } else {
+            for (PreparedWaypoint prepared : visible) {
+                renderLabel(client, matrices, PANEL_BUFFERS, TEXT_BUFFERS, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            PANEL_BUFFERS.draw();
+            TEXT_BUFFERS.draw();
         }
-        PANEL_BUFFERS.draw();
-        TEXT_BUFFERS.draw();
     }
 
     private static void renderLabel(MinecraftClient client, MatrixStack matrices,
@@ -111,10 +126,14 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(scale, -scale, scale);
 
-        drawRoundedPanel(panelBuffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
-                x + textWidth + 3.0f, 8.0f, background, color);
-        client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
-                textBuffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        if (panelBuffers != null) {
+            drawRoundedPanel(panelBuffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+                    x + textWidth + 3.0f, 8.0f, background, color);
+        }
+        if (textBuffers != null) {
+            client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
+                    textBuffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        }
         matrices.pop();
     }
 

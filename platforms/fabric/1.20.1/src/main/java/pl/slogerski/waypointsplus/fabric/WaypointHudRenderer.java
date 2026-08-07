@@ -3,6 +3,7 @@ package pl.slogerski.waypointsplus.fabric;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.BufferBuilder;
@@ -28,6 +29,7 @@ final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
+    private static final boolean VULKAN_RENDERER = FabricLoader.getInstance().isModLoaded("vulkanmod");
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
@@ -37,7 +39,7 @@ final class WaypointHudRenderer {
     private WaypointHudRenderer() { }
 
     static void register() {
-        WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
+        WorldRenderEvents.LAST.register(WaypointHudRenderer::render);
     }
 
     private static void render(WorldRenderContext context) {
@@ -71,10 +73,11 @@ final class WaypointHudRenderer {
             }
             if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
         }
-        if (!visible.isEmpty()) renderLabels(client, matrices, camera, cameraPos, visible, settings);
+        if (!visible.isEmpty()) renderLabels(client, matrices, buffers, camera, cameraPos, visible, settings);
     }
 
-    private static void renderLabels(MinecraftClient client, MatrixStack matrices, Camera camera,
+    private static void renderLabels(MinecraftClient client, MatrixStack matrices,
+                                     VertexConsumerProvider.Immediate engineBuffers, Camera camera,
                                      Vec3d cameraPos, List<PreparedWaypoint> waypoints,
                                      WaypointSettings settings) {
         RenderSystem.enableBlend();
@@ -82,24 +85,38 @@ final class WaypointHudRenderer {
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-        BufferBuilder panels = Tessellator.getInstance().getBuffer();
-        panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new BufferBuilder(512));
-        for (PreparedWaypoint prepared : waypoints) {
-            appendLabel(client, matrices, panels, texts, camera, cameraPos,
-                    prepared.waypoint(), prepared.target(), settings);
+        if (VULKAN_RENDERER) {
+            VertexConsumer panels = engineBuffers.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, panels, null, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            engineBuffers.draw(RenderLayer.getTextBackgroundSeeThrough());
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, null, engineBuffers, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            engineBuffers.draw();
+        } else {
+            RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            BufferBuilder panels = Tessellator.getInstance().getBuffer();
+            panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new BufferBuilder(512));
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, panels, texts, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            Tessellator.getInstance().draw();
+            texts.draw();
         }
-        Tessellator.getInstance().draw();
-        texts.draw();
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
     }
 
-    private static void appendLabel(MinecraftClient client, MatrixStack matrices, BufferBuilder panels,
+    private static void appendLabel(MinecraftClient client, MatrixStack matrices, VertexConsumer panels,
                                     VertexConsumerProvider.Immediate texts, Camera camera, Vec3d cameraPos,
                                     Waypoint waypoint, DisplayTarget target, WaypointSettings settings) {
         double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
@@ -129,14 +146,18 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(-scale, -scale, scale);
 
-        drawRoundedPanel(panels, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
-                x + textWidth + 3.0f, 8.0f, background, color);
-        client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
-                texts, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        if (panels != null) {
+            drawRoundedPanel(panels, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+                    x + textWidth + 3.0f, 8.0f, background, color);
+        }
+        if (texts != null) {
+            client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
+                    texts, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
+        }
         matrices.pop();
     }
 
-    private static void drawRoundedPanel(BufferBuilder vertices, Matrix4f matrix,
+    private static void drawRoundedPanel(VertexConsumer vertices, Matrix4f matrix,
                                          float left, float top, float right, float bottom,
                                          int background, int border) {
         if ((background >>> 24) != 0) {
@@ -175,7 +196,7 @@ final class WaypointHudRenderer {
         matrices.pop();
     }
 
-    private static void quad(BufferBuilder vertices, Matrix4f matrix, float left, float top,
+    private static void quad(VertexConsumer vertices, Matrix4f matrix, float left, float top,
                              float right, float bottom, float z, int color) {
         vertices.vertex(matrix, left, top, z).color(color).light(FULL_BRIGHT).next();
         vertices.vertex(matrix, left, bottom, z).color(color).light(FULL_BRIGHT).next();
