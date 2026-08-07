@@ -36,6 +36,7 @@ final class WaypointHudRenderer {
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
     private static final SubmitRenderPhase<SubmitNode> AFTER_TERRAIN =
             new SubmitRenderPhase<>(collection -> collection.afterTerrain);
+    private static RenderMode renderMode = RenderMode.DIRECT;
 
     private WaypointHudRenderer() { }
 
@@ -120,22 +121,34 @@ final class WaypointHudRenderer {
 
         OrderedSubmitNodeCollector panelSubmits = submits.order(0);
         OrderedSubmitNodeCollector textSubmits = submits.order(1);
+        if (renderMode == RenderMode.DIRECT) {
+            submitDirectLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color);
+        } else {
+            submitPhasedLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color);
+        }
+        pose.popPose();
+    }
 
-        panelSubmits.submitCustom(AFTER_TERRAIN, new CustomFeatureRenderer.Submit(
+    private static void submitDirectLabel(PoseStack pose, OrderedSubmitNodeCollector panels,
+                                          OrderedSubmitNodeCollector texts, Component text, float x,
+                                          int textWidth, int background, int color) {
+        panels.submitCustomGeometry(pose, RenderTypes.textBackgroundSeeThrough(),
+                (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
+                        x + textWidth + 3.0f, 8.0f, background, color));
+        texts.submitText(pose, x, -3.0f, text.getVisualOrderText(), false,
+                Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, color, 0, 0);
+    }
+
+    private static void submitPhasedLabel(PoseStack pose, OrderedSubmitNodeCollector panels,
+                                          OrderedSubmitNodeCollector texts, Component text, float x,
+                                          int textWidth, int background, int color) {
+        panels.submitCustom(AFTER_TERRAIN, new CustomFeatureRenderer.Submit(
                 pose.last().copy(),
                 RenderTypes.textBackgroundSeeThrough(),
-                (entry, vertices) -> drawRoundedPanel(
-                        vertices,
-                        entry.pose(),
-                        x - 3.0f,
-                        -7.0f,
-                        x + textWidth + 3.0f,
-                        8.0f,
-                        background,
-                        color
-                )
+                (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
+                        x + textWidth + 3.0f, 8.0f, background, color)
         ));
-        textSubmits.submitCustom(AFTER_TERRAIN, new TextFeatureRenderer.Submit(
+        texts.submitCustom(AFTER_TERRAIN, new TextFeatureRenderer.Submit(
                 new Matrix4f(pose.last().pose()),
                 x,
                 -3.0f,
@@ -147,7 +160,6 @@ final class WaypointHudRenderer {
                 0,
                 0
         ));
-        pose.popPose();
     }
 
     private static void drawRoundedPanel(VertexConsumer vertices, Matrix4fc matrix,
@@ -269,4 +281,9 @@ final class WaypointHudRenderer {
     private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
 
     private record DisplayTarget(double x, double y, double z) { }
+
+    private enum RenderMode {
+        DIRECT,
+        PHASED
+    }
 }

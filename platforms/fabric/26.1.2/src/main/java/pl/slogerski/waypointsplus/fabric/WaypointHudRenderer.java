@@ -7,7 +7,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
@@ -31,7 +32,7 @@ final class WaypointHudRenderer {
     private WaypointHudRenderer() { }
 
     static void register() {
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WaypointHudRenderer::render);
+        LevelRenderEvents.COLLECT_SUBMITS.register(WaypointHudRenderer::render);
     }
 
     private static void render(LevelRenderContext context) {
@@ -49,7 +50,7 @@ final class WaypointHudRenderer {
         Camera camera = minecraft.gameRenderer.getMainCamera();
         Vec3 cameraPos = camera.position();
         PoseStack pose = context.poseStack();
-        MultiBufferSource.BufferSource buffers = context.bufferSource();
+        SubmitNodeCollector submits = context.submitNodeCollector();
 
         List<PreparedWaypoint> visible = new ArrayList<>();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension)) {
@@ -60,18 +61,17 @@ final class WaypointHudRenderer {
         }
         if (settings.laserEnabled) {
             for (PreparedWaypoint prepared : visible) {
-                drawLaser(pose, buffers, cameraPos, prepared.target(),
+                drawLaser(pose, submits, cameraPos, prepared.target(),
                         parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
             }
-            if (!visible.isEmpty()) buffers.endBatch(RenderTypes.debugQuads());
         }
         for (PreparedWaypoint prepared : visible) {
-            renderLabel(minecraft, pose, buffers, camera, cameraPos,
+            renderLabel(minecraft, pose, submits, camera, cameraPos,
                     prepared.waypoint(), prepared.target(), settings);
         }
     }
 
-    private static void renderLabel(Minecraft minecraft, PoseStack pose, MultiBufferSource.BufferSource buffers,
+    private static void renderLabel(Minecraft minecraft, PoseStack pose, SubmitNodeCollector submits,
                                     Camera camera, Vec3 cameraPos, Waypoint waypoint,
                                     DisplayTarget target, WaypointSettings settings) {
         double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
@@ -101,19 +101,19 @@ final class WaypointHudRenderer {
         pose.mulPose(camera.rotation());
         pose.scale(scale, -scale, scale);
 
-        drawRoundedPanel(buffers, pose.last().pose(), x - 3.0f, -7.0f,
-                x + textWidth + 3.0f, 8.0f, background, color);
-        buffers.endBatch(RenderTypes.textBackgroundSeeThrough());
-        minecraft.font.drawInBatch(text, x, -3.0f, color, false, pose.last().pose(),
-                buffers, Font.DisplayMode.SEE_THROUGH, 0, FULL_BRIGHT);
-        buffers.endBatch();
+        OrderedSubmitNodeCollector panelSubmits = submits.order(0);
+        OrderedSubmitNodeCollector textSubmits = submits.order(1);
+        panelSubmits.submitCustomGeometry(pose, RenderTypes.textBackgroundSeeThrough(),
+                (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
+                        x + textWidth + 3.0f, 8.0f, background, color));
+        textSubmits.submitText(pose, x, -3.0f, text.getVisualOrderText(), false,
+                Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, color, 0, 0);
         pose.popPose();
     }
 
-    private static void drawRoundedPanel(MultiBufferSource buffers, Matrix4fc matrix,
+    private static void drawRoundedPanel(VertexConsumer vertices, Matrix4fc matrix,
                                          float left, float top, float right, float bottom,
                                          int background, int border) {
-        VertexConsumer vertices = buffers.getBuffer(RenderTypes.textBackgroundSeeThrough());
         if ((background >>> 24) != 0) {
             quad(vertices, matrix, left + 2, top + 1, right - 2, top + 2, 0.01f, background);
             quad(vertices, matrix, left + 1, top + 2, right - 1, bottom - 2, 0.01f, background);
@@ -129,7 +129,7 @@ final class WaypointHudRenderer {
         quad(vertices, matrix, right - 2, bottom - 2, right - 1, bottom - 1, 0.01f, border);
     }
 
-    private static void drawLaser(PoseStack pose, MultiBufferSource buffers, Vec3 cameraPos,
+    private static void drawLaser(PoseStack pose, SubmitNodeCollector submits, Vec3 cameraPos,
                                   DisplayTarget target, int waypointColor) {
         int color = 0xB0000000 | (waypointColor & 0x00FFFFFF);
         float bottom = (float)(-64.0 - cameraPos.y);
@@ -137,16 +137,17 @@ final class WaypointHudRenderer {
         float halfWidth = 0.055f;
         pose.pushPose();
         pose.translate(target.x - cameraPos.x, 0.0, target.z - cameraPos.z);
-        Matrix4fc matrix = pose.last().pose();
-        VertexConsumer vertices = buffers.getBuffer(RenderTypes.debugQuads());
-        vertices.addVertex(matrix, -halfWidth, bottom, 0).setColor(color);
-        vertices.addVertex(matrix, -halfWidth, top, 0).setColor(color);
-        vertices.addVertex(matrix, halfWidth, top, 0).setColor(color);
-        vertices.addVertex(matrix, halfWidth, bottom, 0).setColor(color);
-        vertices.addVertex(matrix, 0, bottom, -halfWidth).setColor(color);
-        vertices.addVertex(matrix, 0, top, -halfWidth).setColor(color);
-        vertices.addVertex(matrix, 0, top, halfWidth).setColor(color);
-        vertices.addVertex(matrix, 0, bottom, halfWidth).setColor(color);
+        submits.submitCustomGeometry(pose, RenderTypes.debugQuads(), (entry, vertices) -> {
+            Matrix4fc matrix = entry.pose();
+            vertices.addVertex(matrix, -halfWidth, bottom, 0).setColor(color);
+            vertices.addVertex(matrix, -halfWidth, top, 0).setColor(color);
+            vertices.addVertex(matrix, halfWidth, top, 0).setColor(color);
+            vertices.addVertex(matrix, halfWidth, bottom, 0).setColor(color);
+            vertices.addVertex(matrix, 0, bottom, -halfWidth).setColor(color);
+            vertices.addVertex(matrix, 0, top, -halfWidth).setColor(color);
+            vertices.addVertex(matrix, 0, top, halfWidth).setColor(color);
+            vertices.addVertex(matrix, 0, bottom, halfWidth).setColor(color);
+        });
         pose.popPose();
     }
 
