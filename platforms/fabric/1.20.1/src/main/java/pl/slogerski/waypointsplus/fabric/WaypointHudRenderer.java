@@ -70,16 +70,38 @@ final class WaypointHudRenderer {
                         parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
             }
         }
-        for (PreparedWaypoint prepared : visible) {
-            renderLabel(client, matrices, buffers, camera, cameraPos,
-                    prepared.waypoint(), prepared.target(), settings);
-        }
+        if (!visible.isEmpty()) renderLabels(client, matrices, camera, cameraPos, visible, settings);
         buffers.draw();
     }
 
-    private static void renderLabel(MinecraftClient client, MatrixStack matrices, VertexConsumerProvider.Immediate buffers,
-                                    Camera camera, Vec3d cameraPos, Waypoint waypoint,
-                                    DisplayTarget target, WaypointSettings settings) {
+    private static void renderLabels(MinecraftClient client, MatrixStack matrices, Camera camera,
+                                     Vec3d cameraPos, List<PreparedWaypoint> waypoints,
+                                     WaypointSettings settings) {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        BufferBuilder panels = Tessellator.getInstance().getBuffer();
+        panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new BufferBuilder(512));
+        for (PreparedWaypoint prepared : waypoints) {
+            appendLabel(client, matrices, panels, texts, camera, cameraPos,
+                    prepared.waypoint(), prepared.target(), settings);
+        }
+        Tessellator.getInstance().draw();
+        texts.draw();
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
+    }
+
+    private static void appendLabel(MinecraftClient client, MatrixStack matrices, BufferBuilder panels,
+                                    VertexConsumerProvider.Immediate texts, Camera camera, Vec3d cameraPos,
+                                    Waypoint waypoint, DisplayTarget target, WaypointSettings settings) {
         double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
         double actualDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double visibleDistance = Math.min(actualDistance, MAX_BILLBOARD_DISTANCE);
@@ -107,34 +129,16 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(-scale, -scale, scale);
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableCull();
-        drawRoundedPanel(matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+        drawRoundedPanel(panels, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
-
-        VertexConsumerProvider.Immediate textBuffers =
-                VertexConsumerProvider.immediate(new BufferBuilder(512));
         client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
-                textBuffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
-        textBuffers.draw();
-
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+                texts, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
         matrices.pop();
     }
 
-    private static void drawRoundedPanel(Matrix4f matrix,
+    private static void drawRoundedPanel(BufferBuilder vertices, Matrix4f matrix,
                                          float left, float top, float right, float bottom,
                                          int background, int border) {
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-        BufferBuilder vertices = Tessellator.getInstance().getBuffer();
-        vertices.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         if ((background >>> 24) != 0) {
             quad(vertices, matrix, left + 2, top + 1, right - 2, top + 2, 0.01f, background);
             quad(vertices, matrix, left + 1, top + 2, right - 1, bottom - 2, 0.01f, background);
@@ -148,7 +152,6 @@ final class WaypointHudRenderer {
         quad(vertices, matrix, right - 2, top + 1, right - 1, top + 2, 0.01f, border);
         quad(vertices, matrix, left + 1, bottom - 2, left + 2, bottom - 1, 0.01f, border);
         quad(vertices, matrix, right - 2, bottom - 2, right - 1, bottom - 1, 0.01f, border);
-        Tessellator.getInstance().draw();
     }
 
     private static void drawLaser(MatrixStack matrices, VertexConsumerProvider buffers, Vec3d cameraPos,

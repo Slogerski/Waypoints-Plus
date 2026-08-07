@@ -104,10 +104,8 @@ final class WaypointHudRenderer {
 
         drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
-        buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
         client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
                 buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
-        buffers.draw();
         matrices.pop();
     }
 

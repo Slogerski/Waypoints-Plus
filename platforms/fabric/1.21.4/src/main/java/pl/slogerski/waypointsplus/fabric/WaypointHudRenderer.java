@@ -70,7 +70,11 @@ final class WaypointHudRenderer {
             renderLabel(client, matrices, buffers, camera, cameraPos,
                     prepared.waypoint(), prepared.target(), settings);
         }
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
         buffers.draw();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
     }
 
     private static void renderLabel(MinecraftClient client, MatrixStack matrices, VertexConsumerProvider.Immediate buffers,
@@ -103,18 +107,10 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(scale, -scale, scale);
 
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
         drawRoundedPanel(buffers, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
                 x + textWidth + 3.0f, 8.0f, background, color);
-        buffers.draw(RenderLayer.getTextBackgroundSeeThrough());
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
         client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
                 buffers, TextRenderer.TextLayerType.SEE_THROUGH, 0, FULL_BRIGHT);
-        buffers.draw();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
         matrices.pop();
     }
 
