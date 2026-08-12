@@ -7,6 +7,6 @@
   "key.waypointsplus.reload": "Reload Waypoints From File",
   "key.waypointsplus.profile_previous": "Previous Waypoint Profile",
   "key.waypointsplus.profile_next": "Next Waypoint Profile",
-  "key.waypointsplus.quick": "Quick Waypoint",
+  "key.waypointsplus.quick": "Create Waypoint From Clipboard",
   "key.waypointsplus.copy_position": "Copy Current Position"
 }

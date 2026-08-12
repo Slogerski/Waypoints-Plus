@@ -17,7 +17,7 @@ final class WaypointTeleport {
         if (!available(client, waypoint)) return;
         String command = client.getNetworkHandler().getCommandDispatcher().getRoot().getChild("teleport") != null
                 ? "teleport" : "tp";
-        client.player.sendChatMessage("/" + command + " @s "
-                + waypoint.x() + " " + waypoint.y() + " " + waypoint.z(), null);
+        client.player.sendCommand(command + " @s "
+                + waypoint.x() + " " + waypoint.y() + " " + waypoint.z());
     }
 }
