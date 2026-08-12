@@ -1,19 +1,26 @@
 package pl.slogerski.waypointsplus.fabric;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.resource.Resource;
+import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 import net.minecraft.util.math.Vec3d;
 import pl.slogerski.waypointsplus.core.Waypoint;
@@ -21,11 +28,15 @@ import pl.slogerski.waypointsplus.core.WaypointAppearance;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
+    private static int fontPackSignature;
+    private static boolean fontPackCached;
+    private static boolean customFontPackActive;
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
@@ -36,6 +47,18 @@ final class WaypointHudRenderer {
 
     static void register() {
         WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
+                new SimpleSynchronousResourceReloadListener() {
+                    @Override
+                    public Identifier getFabricId() {
+                        return new Identifier("waypointsplus", "font_pack_detection");
+                    }
+
+                    @Override
+                    public void reload(ResourceManager manager) {
+                        fontPackCached = false;
+                    }
+                });
     }
 
     private static void render(WorldRenderContext context) {
@@ -74,17 +97,35 @@ final class WaypointHudRenderer {
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-        BufferBuilder panels = Tessellator.getInstance().getBuffer();
-        panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new BufferBuilder(512));
-        for (PreparedWaypoint prepared : waypoints) {
-            appendLabel(client, matrices, panels, texts, camera, cameraPos,
-                    prepared.waypoint(), prepared.target(), settings);
+        if (hasCustomFontPack(client)) {
+            RenderSystem.setShader(GameRenderer::getPositionColorShader);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            BufferBuilder panels = Tessellator.getInstance().getBuffer();
+            panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, panels, null, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            Tessellator.getInstance().draw();
+            VertexConsumerProvider.Immediate texts = client.getBufferBuilders().getEntityVertexConsumers();
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, null, texts, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            texts.draw();
+        } else {
+            RenderSystem.setShader(GameRenderer::getPositionColorShader);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            BufferBuilder panels = Tessellator.getInstance().getBuffer();
+            panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new net.minecraft.client.render.BufferBuilder(512));
+            for (PreparedWaypoint prepared : waypoints) {
+                appendLabel(client, matrices, panels, texts, camera, cameraPos,
+                        prepared.waypoint(), prepared.target(), settings);
+            }
+            Tessellator.getInstance().draw();
+            texts.draw();
         }
-        Tessellator.getInstance().draw();
-        texts.draw();
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
@@ -121,10 +162,14 @@ final class WaypointHudRenderer {
         matrices.multiply(camera.getRotation());
         matrices.scale(-scale, -scale, scale);
 
-        drawRoundedPanel(panels, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
-                x + textWidth + 3.0f, 8.0f, background, color);
-        client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
-                texts, true, 0, FULL_BRIGHT);
+        if (panels != null) {
+            drawRoundedPanel(panels, matrices.peek().getPositionMatrix(), x - 3.0f, -7.0f,
+                    x + textWidth + 3.0f, 8.0f, background, color);
+        }
+        if (texts != null) {
+            client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
+                    texts, true, 0, FULL_BRIGHT);
+        }
         matrices.pop();
     }
 
@@ -190,6 +235,30 @@ final class WaypointHudRenderer {
         vertices.vertex(matrix, 0, top, -halfWidth).color(color).next();
         vertices.vertex(matrix, 0, top, halfWidth).color(color).next();
         vertices.vertex(matrix, 0, bottom, halfWidth).color(color).next();
+    }
+
+    private static boolean hasCustomFontPack(MinecraftClient client) {
+        GameOptions options = client.options;
+        int signature = 31 * options.resourcePacks.hashCode() + options.incompatibleResourcePacks.hashCode();
+        if (fontPackCached && signature == fontPackSignature) return customFontPackActive;
+        fontPackSignature = signature;
+        customFontPackActive = detectCustomFontPack(client);
+        fontPackCached = true;
+        return customFontPackActive;
+    }
+
+    private static boolean detectCustomFontPack(MinecraftClient client) {
+        ResourceManager manager = client.getResourceManager();
+        for (String path : List.of("font/default.json", "font/uniform.json", "font/alt.json")) {
+            Resource resource = manager.getResource(new Identifier("minecraft", path)).orElse(null);
+            if (resource != null && !"vanilla".equals(resource.getResourcePackName())) return true;
+        }
+        Map<Identifier, Resource> fontTextures = manager.findResources("textures/font",
+                id -> "minecraft".equals(id.getNamespace()) && id.getPath().endsWith(".png"));
+        for (Resource resource : fontTextures.values()) {
+            if (!"vanilla".equals(resource.getResourcePackName())) return true;
+        }
+        return false;
     }
 
     private static List<PreparedWaypoint> activeWaypoints(WaypointConfigStore store, String serverKey,

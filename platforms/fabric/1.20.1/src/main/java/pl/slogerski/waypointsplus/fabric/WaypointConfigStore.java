@@ -172,6 +172,45 @@ final class WaypointConfigStore {
         if (waypoints.removeIf(waypoint -> waypoint.id().equals(id))) saveWaypoints();
     }
 
+    void removeWaypoints(java.util.Set<UUID> ids) {
+        ensureServerLoaded(ServerScope.current());
+        if (!ids.isEmpty() && waypoints.removeIf(waypoint -> ids.contains(waypoint.id()))) saveWaypoints();
+    }
+
+    int importWaypoints(String serverKey, String profile, List<WaypointTransfer.Entry> imported) {
+        ensureServerLoaded(serverKey);
+        java.util.Set<WaypointTransfer.Entry> existingEntries = new java.util.HashSet<>();
+        for (Waypoint existing : waypoints) {
+            if (profile.equals(existing.profile())) {
+                existingEntries.add(new WaypointTransfer.Entry(existing.name(), existing.x(), existing.y(), existing.z(),
+                        existing.dimension(), existing.colorArgb().replace("#", "").toUpperCase(java.util.Locale.ROOT)));
+            }
+        }
+        int added = 0;
+        for (WaypointTransfer.Entry entry : imported) {
+            if (!existingEntries.add(entry)) continue;
+            waypoints.add(new Waypoint(UUID.randomUUID(), entry.name(), normalizeServerKey(serverKey), profile,
+                    entry.dimension(), entry.x(), entry.y(), entry.z(), entry.colorArgb()));
+            added++;
+        }
+        if (added > 0) saveWaypoints();
+        return added;
+    }
+
+    boolean addQuickWaypoint(String serverKey, WaypointTransfer.Entry entry) {
+        ensureServerLoaded(serverKey);
+        String profile = activeProfile(serverKey);
+        for (Waypoint existing : waypoints) {
+            if (profile.equals(existing.profile()) && entry.name().equals(existing.name())
+                    && entry.x() == existing.x() && entry.y() == existing.y() && entry.z() == existing.z()
+                    && entry.dimension().equals(existing.dimension())) return false;
+        }
+        waypoints.add(new Waypoint(UUID.randomUUID(), entry.name(), normalizeServerKey(serverKey), profile,
+                entry.dimension(), entry.x(), entry.y(), entry.z(), entry.colorArgb()));
+        saveWaypoints();
+        return true;
+    }
+
     void load() {
         String reloadServer = loadedServerKey;
         loadedServerKey = null;

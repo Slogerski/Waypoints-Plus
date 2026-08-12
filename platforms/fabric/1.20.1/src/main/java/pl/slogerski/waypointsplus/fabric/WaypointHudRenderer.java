@@ -39,7 +39,7 @@ final class WaypointHudRenderer {
     private WaypointHudRenderer() { }
 
     static void register() {
-        WorldRenderEvents.LAST.register(WaypointHudRenderer::render);
+        WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
     }
 
     private static void render(WorldRenderContext context) {

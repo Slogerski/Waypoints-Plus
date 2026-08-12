@@ -21,6 +21,8 @@ public final class WaypointsPlusClient implements ClientModInitializer {
     private KeyMapping reloadWaypointsKey;
     private KeyMapping previousProfileKey;
     private KeyMapping nextProfileKey;
+    private KeyMapping quickWaypointKey;
+    private KeyMapping copyCurrentPositionKey;
     private int lastPlayerX, lastPlayerY, lastPlayerZ;
     private boolean hasPlayerPosition;
     private boolean wasPlayerDead;
@@ -33,15 +35,19 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         config.load();
         WaypointHudRenderer.register();
         createWaypointKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.create", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
+                "key.waypointsplus.create", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY));
         manageWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.manage", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                "key.waypointsplus.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY));
         previousProfileKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.profile_previous", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                "key.waypointsplus.profile_previous", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
         nextProfileKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.profile_next", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+                "key.waypointsplus.profile_next", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT, CATEGORY));
+        quickWaypointKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.waypointsplus.quick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+        copyCurrentPositionKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.waypointsplus.copy_position", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player != null) {
                 var position = client.player.blockPosition();
@@ -72,6 +78,21 @@ public final class WaypointsPlusClient implements ClientModInitializer {
             }
             while (previousProfileKey.consumeClick()) config.shiftProfile(ServerScope.current(), -1);
             while (nextProfileKey.consumeClick()) config.shiftProfile(ServerScope.current(), 1);
+            while (quickWaypointKey.consumeClick()) {
+                if (client.player == null || client.level == null) continue;
+                WaypointTransfer.Entry entry = QuickWaypointClipboard.parse(client.keyboardHandler.getClipboard(),
+                        client.level.dimension().identifier().toString(),
+                        String.format("%08X", config.settings().markerArgb),
+                        "pl".equals(config.settings().language));
+                if (entry != null) config.addQuickWaypoint(ServerScope.current(), entry);
+            }
+            while (copyCurrentPositionKey.consumeClick()) {
+                if (client.player == null) continue;
+                var position = client.player.blockPosition();
+                client.keyboardHandler.setClipboard(QuickWaypointClipboard.currentPosition(
+                        position.getX(), position.getY(), position.getZ(),
+                        "pl".equals(config.settings().language)));
+            }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             if (hasPlayerPosition) {

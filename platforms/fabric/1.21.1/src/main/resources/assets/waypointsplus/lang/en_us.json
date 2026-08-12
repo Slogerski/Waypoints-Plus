@@ -6,5 +6,7 @@
   "key.waypointsplus.advanced_settings": "Advanced Settings",
   "key.waypointsplus.reload": "Reload Waypoints From File",
   "key.waypointsplus.profile_previous": "Previous Waypoint Profile",
-  "key.waypointsplus.profile_next": "Next Waypoint Profile"
+  "key.waypointsplus.profile_next": "Next Waypoint Profile",
+  "key.waypointsplus.quick": "Quick Waypoint",
+  "key.waypointsplus.copy_position": "Copy Current Position"
 }
