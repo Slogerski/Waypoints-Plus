@@ -35,7 +35,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         config.load();
         WaypointHudRenderer.register();
         createWaypointKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.create", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, CATEGORY));
+                "key.waypointsplus.create", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
         manageWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.manage", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
