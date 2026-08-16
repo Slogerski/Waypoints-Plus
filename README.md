@@ -1,6 +1,16 @@
 ![aa](https://cdn.modrinth.com/data/cached_images/6c02ea6a406ee040def164f51a8835d175682fc5_0.webp)
 # Waypoints Plus
-
+<p align="center">
+   <a href="https://modrinth.com/mod/waypoints-plus">
+    <img src="https://img.shields.io/badge/Pobierz-Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white" alt="Pobierz z Modrinth">
+  </a>
+  <a href="https://www.curseforge.com/minecraft/mc-mods/waypoints-plus">
+    <img src="https://img.shields.io/badge/Pobierz-CurseForge-F16436?style=for-the-badge&logo=curseforge&logoColor=white" alt="Pobierz z CurseForge">
+  </a>
+  <a href="https://github.com/Slogerski/Waypoints-Plus">
+    <img src="https://img.shields.io/badge/Kod_źródłowy-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Kod źródłowy">
+  </a>
+</p>
 **Waypoints Plus** is a lightweight client-side Fabric mod for creating colorful, smooth waypoint markers. It provides per-server profiles, cross-dimension coordinate conversion, customizable visuals, and convenient in-game management.
 
 ## Main features
