@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "name": "Slogerski",
+      "amount": "143",
+      "currency": "$"
+    },
+    {
+      "name": "xMelonekMaX",
+      "amount": "52,50",
+      "currency": "$"
+    },
+    {
+      "name": "TestPlayer1",
+      "amount": "10",
+      "currency": "$",
+    }
+  ]
+}
