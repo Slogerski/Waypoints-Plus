@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "welcome",
+  "title": {
+    "en": "Waypoints Plus:",
+    "pl": "Waypoints Plus:"
+  },
+  "text": {
+    "en": "En desc!",
+    "pl": "PL desc"
+  },
+  "targetUrl": "https://modrinth.com/mod/waypoints-plus",
+  "imageUrl": ""
+}
