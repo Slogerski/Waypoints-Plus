@@ -5,12 +5,13 @@
       "name": "Slogerski",
       "amount": "443",
       "currency": "PLN",
-      "color": "#FEC110"
+      "color": "#FF1111"
     },
     {
       "name": "xMelonekMaX",
       "amount": "52,50",
-      "currency": "$"
+      "currency": "$",
+      "color": "#1111F2"
     },
     {
       "name": "TestPlayer1",
