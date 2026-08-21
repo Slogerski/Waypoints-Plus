@@ -5,6 +5,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import pl.slogerski.waypointsplus.core.Waypoint;
+import pl.slogerski.waypointsplus.core.WaypointDimensionFilter;
 
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ final class WaypointManagerScreen extends Screen {
     private final int requestedPage;
     private final Selection selection;
     private List<Waypoint> entries = List.of();
+    private List<String> dimensionFilters = List.of(WaypointDimensionFilter.ALL);
     private int page;
     private String profileName = "Default";
 
@@ -33,9 +35,16 @@ final class WaypointManagerScreen extends Screen {
         List<String> profiles = store.profiles(scope);
         int profileIndex = store.activeProfileIndex(scope);
         profileName = profiles.get(profileIndex);
-        entries = store.waypoints().stream()
+        List<Waypoint> profileEntries = store.waypoints().stream()
                 .filter(w -> scope.equals(w.serverKey()) && profileName.equals(w.profile())).toList();
-        selection.ids.retainAll(entries.stream().map(Waypoint::id).toList());
+        dimensionFilters = WaypointDimensionFilter.available(
+                profileEntries.stream().map(Waypoint::dimension).toList());
+        if (!dimensionFilters.contains(selection.dimensionFilter)) {
+            selection.dimensionFilter = WaypointDimensionFilter.ALL;
+        }
+        entries = profileEntries.stream()
+                .filter(w -> WaypointDimensionFilter.matches(selection.dimensionFilter, w.dimension())).toList();
+        selection.ids.retainAll(new java.util.HashSet<>(entries.stream().map(Waypoint::id).toList()));
         int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         page = Math.max(0, Math.min(requestedPage, pages - 1));
         int left = width / 2 - 181;
@@ -51,7 +60,7 @@ final class WaypointManagerScreen extends Screen {
             client.setScreen(new WaypointManagerScreen(parent));
         }).dimensions(width / 2 + 77, 25, 28, 20).build()).active = profileIndex + 1 < profiles.size();
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Export ↑", "Eksportuj ↑")), b -> exportSelected())
-                .dimensions(width / 2 + 113, 25, 68, 20).build()).active = !selection.ids.isEmpty();
+                .dimensions(width / 2 + 114, 25, 68, 20).build()).active = !selection.ids.isEmpty();
 
         boolean allSelected = !entries.isEmpty() && selection.ids.size() == entries.size();
         addDrawableChild(ButtonWidget.builder(Text.empty(), b -> toggleAll(allSelected))
@@ -72,7 +81,7 @@ final class WaypointManagerScreen extends Screen {
             if (WaypointTeleport.available(client, waypoint)) {
                 addDrawableChild(ButtonWidget.builder(Text.literal("/tp"),
                         b -> teleportWaypoint(waypoint))
-                        .dimensions(left + 240, rowY, 33, 20).build());
+                        .dimensions(left + 239, rowY, 33, 20).build());
             }
             addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Edit", "Edytuj")),
                     b -> editWaypoint(waypoint))
@@ -85,10 +94,12 @@ final class WaypointManagerScreen extends Screen {
                 .dimensions(left, navY, 36, 20).build()).active = page > 0;
         addDrawableChild(ButtonWidget.builder(Text.literal(">"), b -> changePage(page + 1))
                 .dimensions(left + 43, navY, 36, 20).build()).active = page + 1 < pages;
+        addDrawableChild(ButtonWidget.builder(Text.literal(dimensionFilterLabel()), b -> cycleDimensionFilter())
+                .dimensions(left + 85, navY, 75, 20).build()).active = dimensionFilters.size() > 1;
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Settings", "Ustawienia")),
-                b -> openSettings()).dimensions(left + 85, navY, 191, 20).build());
+                b -> openSettings()).dimensions(left + 166, navY, 130, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Done", "Gotowe")), b -> close())
-                .dimensions(left + 282, navY, 80, 20).build());
+                .dimensions(left + 302, navY, 60, 20).build());
     }
 
     private void toggle(Waypoint waypoint) {
@@ -123,6 +134,20 @@ final class WaypointManagerScreen extends Screen {
         client.setScreen(new WaypointSettingsScreen(this));
     }
 
+    private void cycleDimensionFilter() {
+        selection.dimensionFilter = WaypointDimensionFilter.next(selection.dimensionFilter, dimensionFilters);
+        selection.ids.clear();
+        selection.confirmSingleDelete = null;
+        selection.confirmDelete = false;
+        client.setScreen(new WaypointManagerScreen(parent, 0, selection));
+    }
+
+    private String dimensionFilterLabel() {
+        return selection.dimensionFilter.isEmpty()
+                ? UiText.get("All", "Wszystkie")
+                : WaypointDimensionFilter.label(selection.dimensionFilter);
+    }
+
     private void toggleAll(boolean allSelected) {
         selection.confirmSingleDelete = null;
         if (allSelected) selection.ids.clear();
@@ -144,11 +169,23 @@ final class WaypointManagerScreen extends Screen {
         selection.confirmSingleDelete = null;
         try {
             List<WaypointTransfer.Entry> imported = WaypointTransfer.importText(client.keyboard.getClipboard());
-            int added = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
-            selection.message = UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(added);
+            if (!WaypointTransfer.customDimensions(imported).isEmpty()) {
+                client.setScreen(new ImportDimensionWarningScreen(this, imported,
+                        client.world.getRegistryKey().getValue().toString(),
+                        values -> finishImport(scope, values)));
+                return;
+            }
+            finishImport(scope, imported);
+            return;
         } catch (RuntimeException exception) {
             selection.message = UiText.get("Invalid waypoint data in clipboard", "Nieprawidłowe dane w schowku");
         }
+        client.setScreen(new WaypointManagerScreen(parent, page, selection));
+    }
+
+    private void finishImport(String scope, List<WaypointTransfer.Entry> imported) {
+        int added = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
+        selection.message = UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(added);
         client.setScreen(new WaypointManagerScreen(parent, page, selection));
     }
 
@@ -200,6 +237,16 @@ final class WaypointManagerScreen extends Screen {
         for (int i = from; i < Math.min(entries.size(), from + PAGE_SIZE); i++) {
             Waypoint w = entries.get(i);
             int y = 79 + (i - from) * 25;
+            String rowDimension = w.dimension();
+            String dimensionLabel = WaypointDimensionFilter.label(rowDimension);
+            float labelScale = 0.75f;
+            float labelX = left - 6 - textRenderer.getWidth(dimensionLabel) * labelScale;
+            context.getMatrices().pushMatrix();
+            context.getMatrices().translate(labelX, y + 1);
+            context.getMatrices().scale(labelScale, labelScale);
+            context.drawTextWithShadow(textRenderer, dimensionLabel, 0, 0,
+                    WaypointDimensionFilter.labelColor(rowDimension));
+            context.getMatrices().popMatrix();
             context.drawTextWithShadow(textRenderer, selection.ids.contains(w.id()) ? "☑" : "☐",
                     left + 4, y, 0xFFACACAC);
             if (w.id().equals(selection.confirmSingleDelete)) {
@@ -223,6 +270,7 @@ final class WaypointManagerScreen extends Screen {
 
     private static final class Selection {
         final Set<java.util.UUID> ids = new HashSet<>();
+        String dimensionFilter = WaypointDimensionFilter.ALL;
         String message = "";
         boolean confirmDelete;
         java.util.UUID confirmSingleDelete;

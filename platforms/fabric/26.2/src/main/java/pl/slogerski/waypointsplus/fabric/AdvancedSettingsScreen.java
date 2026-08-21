@@ -31,7 +31,12 @@ final class AdvancedSettingsScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal(
                         UiText.get("Blurred Background", "Rozmyte tło") + ": " + (settings.menuBackground ? "ON" : "OFF")),
                 button -> toggleMenuBackground())
-                .pos(left + 10, top + 40).size(296, 20).build());
+                .pos(left + 10, top + 40).size(144, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(
+                        UiText.get("Cross-dimensional", "Między wymiarami") + ": "
+                                + (settings.crossDimensionWaypoints ? "ON" : "OFF")),
+                button -> toggleCrossDimensionWaypoints())
+                .pos(left + 162, top + 40).size(144, 20).build());
         scale = field(left + 224, top + 74, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setResponder(value -> applyScale());
@@ -152,6 +157,13 @@ final class AdvancedSettingsScreen extends Screen {
     private void toggleMenuBackground() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;
+        settingsScreen.markDirty();
+        minecraft.gui.setScreen(new AdvancedSettingsScreen(settingsScreen));
+    }
+
+    private void toggleCrossDimensionWaypoints() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        settings.crossDimensionWaypoints = !settings.crossDimensionWaypoints;
         settingsScreen.markDirty();
         minecraft.gui.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }

@@ -29,7 +29,9 @@ abstract class WaypointFormScreen extends Screen {
 
     @Override protected void init() {
         panelLeft = width / 2 - 150;
-        panelTop = Math.max(14, (height - 206) / 2);
+        panelTop = this instanceof CreateWaypointScreen
+                ? Math.max(28, height / 2 - 85)
+                : Math.max(14, (height - 206) / 2);
         name = field(panelLeft + 10, panelTop + 46, 280, pendingName, 64, "Name");
         xField = field(panelLeft + 10, panelTop + 88, 88, pendingX, 14, "X");
         yField = field(panelLeft + 106, panelTop + 88, 88, pendingY, 14, "Y");
@@ -115,6 +117,19 @@ abstract class WaypointFormScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "X", panelLeft + 10, panelTop + 76, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, "Y", panelLeft + 106, panelTop + 76, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, "Z", panelLeft + 202, panelTop + 76, 0xFFD9E2F0);
+        if (this instanceof CreateWaypointScreen) {
+            Text tip = Text.literal(UiText.get("Tip: Press [ ", "Tip: Naciśnij [ "))
+                    .styled(style -> style.withColor(0x6B7280))
+                    .append(Text.literal(";").styled(style -> style.withColor(0xFEC110)))
+                    .append(Text.literal(UiText.get(
+                            " ] to manage, edit, or delete waypoints.",
+                            " ], aby zarządzać, edytować")).styled(style -> style.withColor(0x6B7280)));
+            context.drawCenteredTextWithShadow(textRenderer, tip, width / 2, panelTop - 22, 0xFF6B7280);
+            context.drawCenteredTextWithShadow(textRenderer, Text.literal(UiText.get(
+                    "If it doesn’t work, check your key bindings in Controls.",
+                    "i usuwać waypointy. Jeśli nie działa, sprawdź Sterowanie.")),
+                    width / 2, panelTop - 11, 0xFF6B7280);
+        }
         if (!error.isEmpty()) context.drawCenteredTextWithShadow(textRenderer, Text.literal(error), width / 2, panelTop + 183, 0xFFFF657A);
     }
 

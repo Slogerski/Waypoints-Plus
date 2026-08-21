@@ -1,5 +1,9 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentService;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentSession;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteTopDonate;
+import pl.slogerski.waypointsplus.fabric.remote.TopDonateEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -14,6 +18,9 @@ final class WaypointSettingsScreen extends Screen {
     private final int requestedProfileIndex;
     private final Session session;
     private Button saveButton;
+    private RemoteContentSession<RemoteTopDonate> topDonateSession;
+    private RemoteTopDonate topDonate = RemoteTopDonate.EMPTY;
+    private boolean topDonateOpened;
     private int left, top;
     private int profileIndex;
     private String profileName = "Default";
@@ -41,6 +48,8 @@ final class WaypointSettingsScreen extends Screen {
         profileName = virtualProfile ? UiText.get("New Profile", "Nowy profil") : profiles.get(profileIndex);
         left = width / 2 - 150;
         top = Math.max(5, (height - (virtualProfile ? 240 : 252)) / 2);
+        if (hasTopDonatePanelSpace()) openTopDonate();
+        else closeTopDonate();
         addRenderableWidget(Button.builder(Component.literal("<"), b -> openProfile(profileIndex - 1, profiles.size(), serverKey))
                 .pos(width / 2 - 125, top + 27).size(28, 20).build()).active = profileIndex > 0;
         addRenderableWidget(Button.builder(Component.literal(">"), b -> openProfile(profileIndex + 1, profiles.size(), serverKey))
@@ -177,10 +186,65 @@ final class WaypointSettingsScreen extends Screen {
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         int bottom = virtualProfile ? top + 150 : top + 250;
         drawPanel(graphics, left, top, left + 300, bottom);
+        if (hasTopDonatePanelSpace()) drawTopDonate(graphics);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
         graphics.centeredText(font, title, width / 2, top + 8, MAGENTA);
         graphics.centeredText(font, Component.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
+    }
+
+    private boolean hasTopDonatePanelSpace() {
+        return left + 303 + 120 <= width - 5;
+    }
+
+    private void drawTopDonate(GuiGraphicsExtractor graphics) {
+        int panelLeft = left + 303;
+        int panelTop = top;
+        graphics.text(font, Component.literal(UiText.get("Top Supporters", "Topka wspierających")),
+                panelLeft, panelTop + 8, 0xFF039E00, true);
+        java.util.List<TopDonateEntry> entries = topDonate.entries();
+        if (entries.isEmpty()) {
+            graphics.text(font, Component.literal(UiText.get("No data", "Brak danych")),
+                    panelLeft, panelTop + 30, 0xED454843, true);
+            return;
+        }
+        int y = panelTop + 30;
+        for (int index = 0; index < Math.min(8, entries.size()); index++) {
+            TopDonateEntry entry = entries.get(index);
+            String rank = "#" + (index + 1) + " ";
+            String donor = compactDonateText(entry.name(), 12) + ": ";
+            String amount = compactDonateText(entry.formattedAmount(), 12);
+            int rankColor = index == 0 ? 0xFFFFD700 : index == 1 ? 0xFFC0C0C0 : index == 2 ? 0xFFCD7F32 : 0xFF858B94;
+            int donorX = panelLeft + font.width(rank);
+            int amountX = donorX + font.width(donor);
+            graphics.text(font, rank, panelLeft, y, rankColor, true);
+            graphics.text(font, donor, donorX, y, entry.colorArgb(), true);
+            graphics.text(font, amount, amountX, y, 0xFF0BFA07, true);
+            y += 14;
+        }
+    }
+
+    private static String compactDonateText(String text, int length) {
+        return text.length() > length ? text.substring(0, length - 1) + "…" : text;
+    }
+
+    private void openTopDonate() {
+        if (topDonateOpened) return;
+        topDonateOpened = true;
+        RemoteContentSession<RemoteTopDonate> opened = RemoteContentService.getDefault().openTopDonate();
+        topDonateSession = opened;
+        topDonate = opened.snapshot();
+        Minecraft minecraft = Minecraft.getInstance();
+        opened.refresh().thenAccept(snapshot -> minecraft.execute(() -> {
+            if (minecraft.gui.screen() == this && topDonateSession == opened) topDonate = snapshot;
+        }));
+    }
+
+    private void closeTopDonate() {
+        if (topDonateSession != null) topDonateSession.close();
+        topDonateSession = null;
+        topDonate = RemoteTopDonate.EMPTY;
+        topDonateOpened = false;
     }
 
     static void fieldBox(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
@@ -221,6 +285,11 @@ final class WaypointSettingsScreen extends Screen {
     private static void roundedFill(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int color) {
         graphics.fill(left + 2, top, right - 2, bottom, color);
         graphics.fill(left, top + 2, right, bottom - 2, color);
+    }
+
+    @Override public void removed() {
+        closeTopDonate();
+        super.removed();
     }
 
     @Override public void onClose() {

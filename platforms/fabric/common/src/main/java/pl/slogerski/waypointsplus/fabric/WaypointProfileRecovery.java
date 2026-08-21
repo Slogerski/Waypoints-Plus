@@ -31,6 +31,11 @@ final class WaypointProfileRecovery {
             JsonElement parsed = JsonParser.parseString(Files.readString(profilesFile));
             if (!parsed.isJsonObject()) return;
             JsonObject profiles = parsed.getAsJsonObject();
+            for (JsonElement value : profiles.entrySet().stream().map(Map.Entry::getValue).toList()) {
+                if (!value.isJsonObject()) continue;
+                JsonElement schema = value.getAsJsonObject().get("schemaVersion");
+                if (schema != null && schema.getAsInt() > 1) return;
+            }
             Set<String> assignedFiles = assignedFiles(profiles, waypointDirectory);
             Map<String, Candidate> candidates = findCandidates(waypointDirectory, assignedFiles);
             boolean changed = false;
@@ -122,12 +127,16 @@ final class WaypointProfileRecovery {
     }
 
     private static void writeAtomically(Path file, String json) throws IOException {
-        Path temporary = file.resolveSibling(file.getFileName() + ".recovery.tmp");
-        Files.writeString(temporary, json, StandardCharsets.UTF_8);
+        Path temporary = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".recovery.tmp");
         try {
-            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException ignored) {
-            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            Files.writeString(temporary, json, StandardCharsets.UTF_8);
+            try {
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 

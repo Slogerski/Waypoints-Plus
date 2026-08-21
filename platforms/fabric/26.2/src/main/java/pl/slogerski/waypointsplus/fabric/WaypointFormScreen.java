@@ -31,7 +31,9 @@ abstract class WaypointFormScreen extends Screen {
 
     @Override protected void init() {
         panelLeft = width / 2 - 150;
-        panelTop = Math.max(14, (height - 206) / 2);
+        panelTop = this instanceof CreateWaypointScreen
+                ? Math.max(28, height / 2 - 85)
+                : Math.max(14, (height - 206) / 2);
         name = field(panelLeft + 10, panelTop + 46, 280, pendingName, 64, "Name");
         xField = field(panelLeft + 10, panelTop + 88, 88, pendingX, 14, "X");
         yField = field(panelLeft + 106, panelTop + 88, 88, pendingY, 14, "Y");
@@ -117,6 +119,19 @@ abstract class WaypointFormScreen extends Screen {
         graphics.text(font, "X", panelLeft + 10, panelTop + 76, 0xFFD9E2F0, true);
         graphics.text(font, "Y", panelLeft + 106, panelTop + 76, 0xFFD9E2F0, true);
         graphics.text(font, "Z", panelLeft + 202, panelTop + 76, 0xFFD9E2F0, true);
+        if (this instanceof CreateWaypointScreen) {
+            Component tip = Component.literal(UiText.get("Tip: Press [ ", "Tip: Naciśnij [ "))
+                    .withColor(0x6B7280)
+                    .append(Component.literal(";").withColor(0xFEC110))
+                    .append(Component.literal(UiText.get(
+                            " ] to manage, edit, or delete waypoints.",
+                            " ], aby zarządzać, edytować")).withColor(0x6B7280));
+            graphics.centeredText(font, tip, width / 2, panelTop - 22, 0xFF6B7280);
+            graphics.centeredText(font, Component.literal(UiText.get(
+                    "If it doesn’t work, check your key bindings in Controls.",
+                    "i usuwać waypointy. Jeśli nie działa, sprawdź Sterowanie.")),
+                    width / 2, panelTop - 11, 0xFF6B7280);
+        }
         if (!error.isEmpty()) graphics.centeredText(font, Component.literal(error), width / 2, panelTop + 183, 0xFFFF657A);
     }
 

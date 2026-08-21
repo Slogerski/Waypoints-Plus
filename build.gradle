@@ -106,10 +106,52 @@ tasks.register("validateVersionManifest") {
     }
 }
 
+tasks.register("validateRemoteContent") {
+    group = "verification"
+    description = "Validates remote links, advertisement, and donation data."
+    inputs.files(fileTree("remote") { include("*.json") })
+    doLast {
+        def required = ["links.json", "about-ad.json", "top-donate.json"]
+        def documents = required.collectEntries { name ->
+            def file = layout.projectDirectory.file("remote/${name}").asFile
+            if (!file.isFile()) throw new GradleException("Missing remote/${name}")
+            def parsed = new JsonSlurper().parse(file)
+            if (parsed.schema != 1) throw new GradleException("Unsupported schema in remote/${name}")
+            [(name): parsed]
+        }
+        def links = documents["links.json"]
+        [links.modrinth, links.curseForge, links.source, links.coffee].each { value ->
+            if (!(value instanceof String) || !value.startsWith("https://")) {
+                throw new GradleException("Invalid required URL in remote/links.json")
+            }
+        }
+        if (!(links.discord instanceof String) || links.discord && !links.discord.startsWith("https://")) {
+            throw new GradleException("Invalid Discord URL in remote/links.json")
+        }
+        def ad = documents["about-ad.json"]
+        if (!(ad.id instanceof String) || !(ad.title?.en instanceof String)
+                || !(ad.title?.pl instanceof String) || !(ad.text?.en instanceof String)
+                || !(ad.text?.pl instanceof String) || !(ad.targetUrl instanceof String)
+                || !ad.targetUrl.startsWith("https://") || !(ad.imageUrl instanceof String)) {
+            throw new GradleException("Invalid remote/about-ad.json")
+        }
+        if (ad.imageUrl) {
+            def host = new URI(ad.imageUrl).host?.toLowerCase(Locale.ROOT)
+            if (!(host in ["raw.githubusercontent.com", "cdn.modrinth.com", "media.forgecdn.net"])) {
+                throw new GradleException("Unsupported advertisement image host: ${host}")
+            }
+        }
+        def entries = documents["top-donate.json"].entries
+        if (!(entries instanceof List) || entries.size() > 8) {
+            throw new GradleException("Invalid remote/top-donate.json")
+        }
+    }
+}
+
 tasks.register("buildAll") {
     group = "build"
     description = "Builds every active Minecraft platform module."
-    dependsOn("validateVersionManifest", ":common:test")
+    dependsOn("validateVersionManifest", "validateRemoteContent", ":common:test")
     dependsOn(activeVersionSpecs.collect { ":${it.project}:build" })
 }
 
@@ -143,12 +185,16 @@ tasks.register("validateReleaseArtifacts") {
             )
         }
 
+        def matchedProjects = new HashSet<String>()
         jars.each { jarFile ->
             def spec = activeVersionSpecs.find {
                 jarFile.name.startsWith("waypoints-plus-mc${it.id}-fabric-")
             }
             if (spec == null) {
                 throw new GradleException("${jarFile.name} does not match an active version")
+            }
+            if (!matchedProjects.add(spec.project as String)) {
+                throw new GradleException("More than one artifact matched ${spec.project}")
             }
             new JarFile(jarFile).withCloseable { jar ->
                 def metadataEntry = jar.getJarEntry("fabric.mod.json")
@@ -173,6 +219,19 @@ tasks.register("validateReleaseArtifacts") {
                         "${jarFile.name} requires ${metadata.depends?.fabricloader}, expected ${expectedLoader}"
                     )
                 }
+                def expectedMinecraft = spec.gameVersions.size() == 1
+                    ? spec.gameVersions.first()
+                    : ">=${spec.gameVersions.first()} <=${spec.gameVersions.last()}"
+                if (metadata.depends?.minecraft != expectedMinecraft) {
+                    throw new GradleException(
+                        "${jarFile.name} supports ${metadata.depends?.minecraft}, expected ${expectedMinecraft}"
+                    )
+                }
+                if (metadata.depends?.java != ">=${spec.java}") {
+                    throw new GradleException(
+                        "${jarFile.name} requires Java ${metadata.depends?.java}, expected >=${spec.java}"
+                    )
+                }
 
                 def licenseEntry = jar.getJarEntry("LICENSE_${mod_id}")
                 if (licenseEntry == null) {
@@ -183,6 +242,9 @@ tasks.register("validateReleaseArtifacts") {
                     throw new GradleException("${jarFile.name} has invalid license ownership")
                 }
             }
+        }
+        if (matchedProjects.size() != activeVersionSpecs.size()) {
+            throw new GradleException("Not every active version produced exactly one artifact")
         }
     }
 }

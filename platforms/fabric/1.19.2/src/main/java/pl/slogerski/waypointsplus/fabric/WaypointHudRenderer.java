@@ -1,13 +1,10 @@
 package pl.slogerski.waypointsplus.fabric;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
@@ -16,49 +13,31 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.resource.Resource;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.resource.ResourceType;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 import net.minecraft.util.math.Vec3d;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
+import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
-    private static int fontPackSignature;
-    private static boolean fontPackCached;
-    private static boolean customFontPackActive;
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
     private static String cachedDimension;
+    private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
 
     private WaypointHudRenderer() { }
 
     static void register() {
         WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
-        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
-                new SimpleSynchronousResourceReloadListener() {
-                    @Override
-                    public Identifier getFabricId() {
-                        return new Identifier("waypointsplus", "font_pack_detection");
-                    }
-
-                    @Override
-                    public void reload(ResourceManager manager) {
-                        fontPackCached = false;
-                    }
-                });
     }
 
     private static void render(WorldRenderContext context) {
@@ -77,7 +56,8 @@ final class WaypointHudRenderer {
         Camera camera = context.camera();
         Vec3d cameraPos = camera.getPos();
         List<PreparedWaypoint> visible = new ArrayList<>();
-        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension)) {
+        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
+                settings.crossDimensionWaypoints)) {
             if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
@@ -97,35 +77,23 @@ final class WaypointHudRenderer {
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
-        if (hasCustomFontPack(client)) {
-            RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-            BufferBuilder panels = Tessellator.getInstance().getBuffer();
-            panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-            for (PreparedWaypoint prepared : waypoints) {
-                appendLabel(client, matrices, panels, null, camera, cameraPos,
-                        prepared.waypoint(), prepared.target(), settings);
-            }
-            Tessellator.getInstance().draw();
-            VertexConsumerProvider.Immediate texts = client.getBufferBuilders().getEntityVertexConsumers();
-            for (PreparedWaypoint prepared : waypoints) {
-                appendLabel(client, matrices, null, texts, camera, cameraPos,
-                        prepared.waypoint(), prepared.target(), settings);
-            }
-            texts.draw();
-        } else {
-            RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-            BufferBuilder panels = Tessellator.getInstance().getBuffer();
-            panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-            VertexConsumerProvider.Immediate texts = VertexConsumerProvider.immediate(new net.minecraft.client.render.BufferBuilder(512));
-            for (PreparedWaypoint prepared : waypoints) {
-                appendLabel(client, matrices, panels, texts, camera, cameraPos,
-                        prepared.waypoint(), prepared.target(), settings);
-            }
-            Tessellator.getInstance().draw();
-            texts.draw();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        BufferBuilder panels = Tessellator.getInstance().getBuffer();
+        panels.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        for (PreparedWaypoint prepared : waypoints) {
+            appendLabel(client, matrices, panels, null, camera, cameraPos,
+                    prepared.waypoint(), prepared.target(), settings);
         }
+        Tessellator.getInstance().draw();
+        VertexConsumerProvider.Immediate texts = client.getBufferBuilders().getEntityVertexConsumers();
+        for (PreparedWaypoint prepared : waypoints) {
+            appendLabel(client, matrices, null, texts, camera, cameraPos,
+                    prepared.waypoint(), prepared.target(), settings);
+        }
+        texts.draw();
+
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
@@ -237,47 +205,26 @@ final class WaypointHudRenderer {
         vertices.vertex(matrix, 0, bottom, halfWidth).color(color).next();
     }
 
-    private static boolean hasCustomFontPack(MinecraftClient client) {
-        GameOptions options = client.options;
-        int signature = 31 * options.resourcePacks.hashCode() + options.incompatibleResourcePacks.hashCode();
-        if (fontPackCached && signature == fontPackSignature) return customFontPackActive;
-        fontPackSignature = signature;
-        customFontPackActive = detectCustomFontPack(client);
-        fontPackCached = true;
-        return customFontPackActive;
-    }
-
-    private static boolean detectCustomFontPack(MinecraftClient client) {
-        ResourceManager manager = client.getResourceManager();
-        for (String path : List.of("font/default.json", "font/uniform.json", "font/alt.json")) {
-            Resource resource = manager.getResource(new Identifier("minecraft", path)).orElse(null);
-            if (resource != null && !"vanilla".equals(resource.getResourcePackName())) return true;
-        }
-        Map<Identifier, Resource> fontTextures = manager.findResources("textures/font",
-                id -> "minecraft".equals(id.getNamespace()) && id.getPath().endsWith(".png"));
-        for (Resource resource : fontTextures.values()) {
-            if (!"vanilla".equals(resource.getResourcePackName())) return true;
-        }
-        return false;
-    }
-
     private static List<PreparedWaypoint> activeWaypoints(WaypointConfigStore store, String serverKey,
-                                                          String profile, String dimension) {
+                                                          String profile, String dimension,
+                                                          boolean crossDimensionWaypoints) {
         long revision = store.waypointRevision();
         if (revision == cachedRevision && serverKey.equals(cachedServerKey)
-                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)) {
+                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)
+                && crossDimensionWaypoints == cachedCrossDimensionWaypoints) {
             return cachedWaypoints;
         }
         List<PreparedWaypoint> prepared = new ArrayList<>();
         for (Waypoint waypoint : store.waypoints()) {
             if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
-            DisplayTarget target = convert(waypoint, dimension);
+            DisplayTarget target = convert(waypoint, dimension, crossDimensionWaypoints);
             if (target != null) prepared.add(new PreparedWaypoint(waypoint, target));
         }
         cachedRevision = revision;
         cachedServerKey = serverKey;
         cachedProfile = profile;
         cachedDimension = dimension;
+        cachedCrossDimensionWaypoints = crossDimensionWaypoints;
         cachedWaypoints = List.copyOf(prepared);
         return cachedWaypoints;
     }
@@ -299,15 +246,12 @@ final class WaypointHudRenderer {
         return dot >= VIEW_CULL_DOT;
     }
 
-    private static DisplayTarget convert(Waypoint waypoint, String currentDimension) {
-        if (currentDimension.equals(waypoint.dimension())) return new DisplayTarget(waypoint.x(), waypoint.y(), waypoint.z());
-        if ("minecraft:overworld".equals(currentDimension) && "minecraft:the_nether".equals(waypoint.dimension())) {
-            return new DisplayTarget(waypoint.x() * 8.0, waypoint.y(), waypoint.z() * 8.0);
-        }
-        if ("minecraft:the_nether".equals(currentDimension) && "minecraft:overworld".equals(waypoint.dimension())) {
-            return new DisplayTarget(waypoint.x() / 8.0, waypoint.y(), waypoint.z() / 8.0);
-        }
-        return null;
+    private static DisplayTarget convert(Waypoint waypoint, String currentDimension,
+                                         boolean crossDimensionWaypoints) {
+        double scale = WaypointDimensionProjection.scale(
+                currentDimension, waypoint.dimension(), crossDimensionWaypoints);
+        if (Double.isNaN(scale)) return null;
+        return new DisplayTarget(waypoint.x() * scale, waypoint.y(), waypoint.z() * scale);
     }
 
     private static int parseArgb(String value, int fallback) {

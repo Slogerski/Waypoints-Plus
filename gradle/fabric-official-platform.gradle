@@ -12,6 +12,13 @@ def minecraftVersion = platformSpec.minecraft ?: platformSpec.gameVersions.first
 def minecraftRequirement = platformSpec.gameVersions.first()
 def javaVersion = platformSpec.java as Integer
 def fabricLoaderVersion = platformSpec.fabricLoader as String
+def codeFamilies = [
+    "26.1.2": "official-26.1",
+    "26.2": "official-26.2"
+]
+if (!codeFamilies.containsKey(platformSpec.id)) {
+    throw new GradleException("No explicit code family for ${platformSpec.id}")
+}
 
 base {
     archivesName = "waypoints-plus-mc${platformSpec.id}-fabric"
@@ -29,6 +36,8 @@ sourceSets {
     main {
         java.srcDir(project(":common").file("src/main/java"))
         java.srcDir(rootProject.file("platforms/fabric/common/src/main/java"))
+        java.srcDir(rootProject.file("platforms/fabric/${codeFamilies[platformSpec.id]}/src/main/java"))
+        java.srcDir(rootProject.file("platforms/fabric/remote-texture/official/src/main/java"))
     }
 }
 

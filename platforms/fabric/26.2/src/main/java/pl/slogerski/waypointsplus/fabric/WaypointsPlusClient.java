@@ -39,7 +39,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         manageWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.manage", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.waypointsplus.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY));
+                "key.waypointsplus.reload", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         previousProfileKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.profile_previous", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
         nextProfileKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(

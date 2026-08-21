@@ -7,6 +7,8 @@ run/
 *.iml
 .vscode/
 .waypointsplus-notes/
+.local-backups/
+/waypoints.zip
 docs/
 *.class
 *.log

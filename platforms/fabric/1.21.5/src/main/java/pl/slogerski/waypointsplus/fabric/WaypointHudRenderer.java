@@ -16,6 +16,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
+import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ final class WaypointHudRenderer {
     private static String cachedServerKey;
     private static String cachedProfile;
     private static String cachedDimension;
+    private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
 
     private WaypointHudRenderer() { }
@@ -60,7 +62,8 @@ final class WaypointHudRenderer {
         VertexConsumerProvider.Immediate buffers = client.getBufferBuilders().getEntityVertexConsumers();
 
         List<PreparedWaypoint> visible = new ArrayList<>();
-        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension)) {
+        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
+                settings.crossDimensionWaypoints)) {
             if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
@@ -186,22 +189,25 @@ final class WaypointHudRenderer {
     }
 
     private static List<PreparedWaypoint> activeWaypoints(WaypointConfigStore store, String serverKey,
-                                                          String profile, String dimension) {
+                                                          String profile, String dimension,
+                                                          boolean crossDimensionWaypoints) {
         long revision = store.waypointRevision();
         if (revision == cachedRevision && serverKey.equals(cachedServerKey)
-                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)) {
+                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)
+                && crossDimensionWaypoints == cachedCrossDimensionWaypoints) {
             return cachedWaypoints;
         }
         List<PreparedWaypoint> prepared = new ArrayList<>();
         for (Waypoint waypoint : store.waypoints()) {
             if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
-            DisplayTarget target = convert(waypoint, dimension);
+            DisplayTarget target = convert(waypoint, dimension, crossDimensionWaypoints);
             if (target != null) prepared.add(new PreparedWaypoint(waypoint, target));
         }
         cachedRevision = revision;
         cachedServerKey = serverKey;
         cachedProfile = profile;
         cachedDimension = dimension;
+        cachedCrossDimensionWaypoints = crossDimensionWaypoints;
         cachedWaypoints = List.copyOf(prepared);
         return cachedWaypoints;
     }
@@ -223,15 +229,12 @@ final class WaypointHudRenderer {
         return dot >= VIEW_CULL_DOT;
     }
 
-    private static DisplayTarget convert(Waypoint waypoint, String currentDimension) {
-        if (currentDimension.equals(waypoint.dimension())) return new DisplayTarget(waypoint.x(), waypoint.y(), waypoint.z());
-        if ("minecraft:overworld".equals(currentDimension) && "minecraft:the_nether".equals(waypoint.dimension())) {
-            return new DisplayTarget(waypoint.x() * 8.0, waypoint.y(), waypoint.z() * 8.0);
-        }
-        if ("minecraft:the_nether".equals(currentDimension) && "minecraft:overworld".equals(waypoint.dimension())) {
-            return new DisplayTarget(waypoint.x() / 8.0, waypoint.y(), waypoint.z() / 8.0);
-        }
-        return null;
+    private static DisplayTarget convert(Waypoint waypoint, String currentDimension,
+                                         boolean crossDimensionWaypoints) {
+        double scale = WaypointDimensionProjection.scale(
+                currentDimension, waypoint.dimension(), crossDimensionWaypoints);
+        if (Double.isNaN(scale)) return null;
+        return new DisplayTarget(waypoint.x() * scale, waypoint.y(), waypoint.z() * scale);
     }
 
     private static int parseArgb(String value, int fallback) {

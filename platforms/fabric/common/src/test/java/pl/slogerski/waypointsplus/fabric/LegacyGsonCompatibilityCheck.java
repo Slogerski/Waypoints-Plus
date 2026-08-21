@@ -44,6 +44,16 @@ public final class LegacyGsonCompatibilityCheck {
 
         List<Waypoint> roundTrip = gson.fromJson(gson.toJson(decoded, listType), listType);
         require(roundTrip.equals(decoded), "Waypoint JSON round trip changed data");
+        WaypointSettings legacySettings = gson.fromJson("{\"scale\":1.0}", WaypointSettings.class);
+        legacySettings.sanitize();
+        require(legacySettings.schemaVersion == 1, "Legacy settings schema was not upgraded");
+        String deeplyNested = "[".repeat(65) + "]".repeat(65);
+        try {
+            WaypointTransfer.importText(deeplyNested);
+            throw new AssertionError("Deep clipboard JSON was accepted");
+        } catch (IllegalArgumentException expected) {
+        }
+        pl.slogerski.waypointsplus.fabric.remote.RemoteContentCompatibilityCheck.run();
     }
 
     private static void require(boolean condition, String message) {

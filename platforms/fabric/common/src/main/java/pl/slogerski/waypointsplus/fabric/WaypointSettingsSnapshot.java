@@ -7,6 +7,7 @@ record WaypointSettingsSnapshot(
         boolean showDistance,
         boolean laserEnabled,
         boolean menuBackground,
+        boolean crossDimensionWaypoints,
         String language,
         float scale,
         int markerArgb,
@@ -21,6 +22,7 @@ record WaypointSettingsSnapshot(
                 settings.showDistance,
                 settings.laserEnabled,
                 settings.menuBackground,
+                settings.crossDimensionWaypoints,
                 settings.language,
                 settings.scale,
                 settings.markerArgb,
@@ -36,6 +38,7 @@ record WaypointSettingsSnapshot(
         settings.showDistance = showDistance;
         settings.laserEnabled = laserEnabled;
         settings.menuBackground = menuBackground;
+        settings.crossDimensionWaypoints = crossDimensionWaypoints;
         settings.language = language;
         settings.scale = scale;
         settings.markerArgb = markerArgb;

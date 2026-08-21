@@ -1,5 +1,9 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentService;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentSession;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteTopDonate;
+import pl.slogerski.waypointsplus.fabric.remote.TopDonateEntry;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -13,6 +17,9 @@ final class WaypointSettingsScreen extends Screen {
     private final int requestedProfileIndex;
     private final Session session;
     private ButtonWidget saveButton;
+    private RemoteContentSession<RemoteTopDonate> topDonateSession;
+    private RemoteTopDonate topDonate = RemoteTopDonate.EMPTY;
+    private boolean topDonateOpened;
     private int left, top;
     private int profileIndex;
     private String profileName = "Default";
@@ -40,6 +47,8 @@ final class WaypointSettingsScreen extends Screen {
         profileName = virtualProfile ? UiText.get("New Profile", "Nowy profil") : profiles.get(profileIndex);
         left = width / 2 - 150;
         top = Math.max(5, (height - (virtualProfile ? 240 : 252)) / 2);
+        if (hasTopDonatePanelSpace()) openTopDonate();
+        else closeTopDonate();
         addDrawableChild(ButtonWidget.builder(Text.literal("<"), b -> openProfile(profileIndex - 1, profiles.size(), serverKey))
                 .dimensions(width / 2 - 125, top + 27, 28, 20).build()).active = profileIndex > 0;
         addDrawableChild(ButtonWidget.builder(Text.literal(">"), b -> openProfile(profileIndex + 1, profiles.size(), serverKey))
@@ -168,10 +177,65 @@ final class WaypointSettingsScreen extends Screen {
         renderBackground(context);
         int bottom = virtualProfile ? top + 150 : top + 250;
         drawPanel(context, left, top, left + 300, bottom);
+        if (hasTopDonatePanelSpace()) drawTopDonate(context);
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 8, MAGENTA);
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
+    }
+
+    private boolean hasTopDonatePanelSpace() {
+        return left + 303 + 120 <= width - 5;
+    }
+
+    private void drawTopDonate(DrawContext context) {
+        int panelLeft = left + 303;
+        int panelTop = top;
+        context.drawTextWithShadow(textRenderer,
+                Text.literal(UiText.get("Top Supporters", "Topka wspierających")), panelLeft, panelTop + 8, 0xFF039E00);
+        java.util.List<TopDonateEntry> entries = topDonate.entries();
+        if (entries.isEmpty()) {
+            context.drawTextWithShadow(textRenderer, Text.literal(UiText.get("No data", "Brak danych")),
+                    panelLeft, panelTop + 30, 0xED454843);
+            return;
+        }
+        int y = panelTop + 30;
+        for (int index = 0; index < Math.min(8, entries.size()); index++) {
+            TopDonateEntry entry = entries.get(index);
+            String rank = "#" + (index + 1) + " ";
+            String donor = compactDonateText(entry.name(), 12) + ": ";
+            String amount = compactDonateText(entry.formattedAmount(), 12);
+            int rankColor = index == 0 ? 0xFFFFD700 : index == 1 ? 0xFFC0C0C0 : index == 2 ? 0xFFCD7F32 : 0xFF858B94;
+            int donorX = panelLeft + textRenderer.getWidth(rank);
+            int amountX = donorX + textRenderer.getWidth(donor);
+            context.drawTextWithShadow(textRenderer, Text.literal(rank), panelLeft, y, rankColor);
+            context.drawTextWithShadow(textRenderer, Text.literal(donor), donorX, y, entry.colorArgb());
+            context.drawTextWithShadow(textRenderer, Text.literal(amount), amountX, y,
+                    0xFF0BFA07);
+            y += 14;
+        }
+    }
+
+    private static String compactDonateText(String text, int length) {
+        return text.length() > length ? text.substring(0, length - 1) + "…" : text;
+    }
+
+    private void openTopDonate() {
+        if (topDonateOpened) return;
+        topDonateOpened = true;
+        RemoteContentSession<RemoteTopDonate> opened = RemoteContentService.getDefault().openTopDonate();
+        topDonateSession = opened;
+        topDonate = opened.snapshot();
+        opened.refresh().thenAccept(snapshot -> client.execute(() -> {
+            if (client.currentScreen == this && topDonateSession == opened) topDonate = snapshot;
+        }));
+    }
+
+    private void closeTopDonate() {
+        if (topDonateSession != null) topDonateSession.close();
+        topDonateSession = null;
+        topDonate = RemoteTopDonate.EMPTY;
+        topDonateOpened = false;
     }
 
     static void fieldBox(DrawContext context, int x, int y, int width, int height) {
@@ -217,6 +281,11 @@ final class WaypointSettingsScreen extends Screen {
     @Override public void renderBackground(DrawContext context) {
         if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
                 WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(context);
+    }
+
+    @Override public void removed() {
+        closeTopDonate();
+        super.removed();
     }
 
     @Override public void close() {

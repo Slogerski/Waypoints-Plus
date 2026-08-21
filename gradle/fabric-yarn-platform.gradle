@@ -14,6 +14,33 @@ def minecraftRequirement = platformSpec.gameVersions.size() == 1
     : ">=${platformSpec.gameVersions.first()} <=${platformSpec.gameVersions.last()}"
 def javaVersion = platformSpec.java as Integer
 def fabricLoaderVersion = platformSpec.fabricLoader as String
+def codeFamilies = [
+    "1.19.2": "yarn-legacy",
+    "1.20.1": "yarn-1.20.1",
+    "1.20.6": "yarn-modern",
+    "1.21.1": "yarn-modern",
+    "1.21.2-1.21.4": "yarn-modern",
+    "1.21.5": "yarn-modern",
+    "1.21.6": "yarn-modern",
+    "1.21.8": "yarn-modern",
+    "1.21.10": "yarn-modern",
+    "1.21.11": "yarn-modern"
+]
+def textureBackends = [
+    "1.19.2": "yarn-dynamic",
+    "1.20.1": "yarn-dynamic",
+    "1.20.6": "yarn-dynamic",
+    "1.21.1": "yarn-dynamic",
+    "1.21.2-1.21.4": "yarn-registered",
+    "1.21.5": "yarn-supplier",
+    "1.21.6": "yarn-supplier",
+    "1.21.8": "yarn-supplier",
+    "1.21.10": "yarn-supplier",
+    "1.21.11": "yarn-supplier"
+]
+if (!codeFamilies.containsKey(platformSpec.id) || !textureBackends.containsKey(platformSpec.id)) {
+    throw new GradleException("No explicit code family for ${platformSpec.id}")
+}
 
 base {
     archivesName = "waypoints-plus-mc${platformSpec.id}-fabric"
@@ -29,6 +56,10 @@ sourceSets {
     main {
         java.srcDir(project(":common").file("src/main/java"))
         java.srcDir(rootProject.file("platforms/fabric/common/src/main/java"))
+        java.srcDir(rootProject.file("platforms/fabric/${codeFamilies[platformSpec.id]}/src/main/java"))
+        java.srcDir(rootProject.file(
+            "platforms/fabric/remote-texture/${textureBackends[platformSpec.id]}/src/main/java"
+        ))
     }
 }
 

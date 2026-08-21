@@ -29,7 +29,12 @@ final class AdvancedSettingsScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.literal(
                         UiText.get("Dark Background", "Ciemne tło") + ": " + (settings.menuBackground ? "ON" : "OFF")),
                 button -> toggleMenuBackground())
-                .dimensions(left + 10, top + 40, 296, 20).build());
+                .dimensions(left + 10, top + 40, 144, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal(
+                        UiText.get("Cross-dimensional", "Między wymiarami") + ": "
+                                + (settings.crossDimensionWaypoints ? "ON" : "OFF")),
+                button -> toggleCrossDimensionWaypoints())
+                .dimensions(left + 162, top + 40, 144, 20).build());
         scale = field(left + 224, top + 74, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setChangedListener(value -> applyScale());
@@ -143,6 +148,13 @@ final class AdvancedSettingsScreen extends Screen {
     private void toggleMenuBackground() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;
+        settingsScreen.markDirty();
+        client.setScreen(new AdvancedSettingsScreen(settingsScreen));
+    }
+
+    private void toggleCrossDimensionWaypoints() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        settings.crossDimensionWaypoints = !settings.crossDimensionWaypoints;
         settingsScreen.markDirty();
         client.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }

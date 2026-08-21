@@ -22,8 +22,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class WaypointConfigStore {
+    private static final int CURRENT_SCHEMA_VERSION = 1;
+    private static final Logger LOGGER = LoggerFactory.getLogger("Waypoints Plus");
+    private static final Set<Path> REPORTED_WRITE_FAILURES = new HashSet<>();
     private static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(Waypoint.class, new WaypointGsonAdapter())
             .setPrettyPrinting()
@@ -46,6 +53,16 @@ final class WaypointConfigStore {
     private long lastWaypointCheck;
     private long waypointModified;
     private long waypointRevision;
+    private boolean settingsWritable = true;
+    private boolean profilesWritable = true;
+    private boolean metadataWritable = true;
+    private boolean waypointWritable = true;
+    private boolean settingsSavePending;
+    private boolean profilesSavePending;
+    private boolean metadataSavePending;
+    private boolean waypointSavePending;
+    private long lastPersistenceRetry;
+    private boolean lastReadNeededSchemaUpgrade;
 
     List<Waypoint> waypoints() {
         ensureServerLoaded(ServerScope.current());
@@ -63,6 +80,7 @@ final class WaypointConfigStore {
     void addWaypointToProfile(String name, String serverKey, String profile, String dimension,
                               int x, int y, int z, String colorArgb) {
         ensureServerLoaded(serverKey);
+        if (!waypointWritable || !profilesWritable) return;
         ServerProfiles state = profileState(serverKey);
         if (!state.names.contains(profile)) {
             state.names.add(profile);
@@ -83,18 +101,21 @@ final class WaypointConfigStore {
     int activeProfileIndex(String serverKey) { return profileState(serverKey).activeIndex; }
 
     void selectProfile(String serverKey, int index) {
+        if (!profilesWritable) return;
         ServerProfiles state = profileState(serverKey);
         state.activeIndex = Math.max(0, Math.min(index, state.names.size() - 1));
         saveProfiles();
     }
 
     void shiftProfile(String serverKey, int delta) {
+        if (!profilesWritable) return;
         ServerProfiles state = profileState(serverKey);
         state.activeIndex = Math.floorMod(state.activeIndex + delta, state.names.size());
         saveProfiles();
     }
 
     void addProfile(String serverKey, String name) {
+        if (!profilesWritable) return;
         String clean = name.trim();
         if (clean.isEmpty()) throw new IllegalArgumentException();
         ServerProfiles state = profileState(serverKey);
@@ -108,6 +129,7 @@ final class WaypointConfigStore {
 
     void renameProfile(String serverKey, String oldName, String newName) {
         ensureServerLoaded(serverKey);
+        if (!waypointWritable || !profilesWritable) return;
         String clean = newName.trim();
         if (clean.isEmpty() || "Default".equals(oldName)) throw new IllegalArgumentException();
         ServerProfiles state = profileState(serverKey);
@@ -128,6 +150,7 @@ final class WaypointConfigStore {
 
     void removeProfile(String serverKey, String name) {
         ensureServerLoaded(serverKey);
+        if (!waypointWritable || !profilesWritable) return;
         if ("Default".equals(name)) return;
         ServerProfiles state = profileState(serverKey);
         int index = state.names.indexOf(name);
@@ -143,21 +166,25 @@ final class WaypointConfigStore {
     void claimLegacy(String serverKey) {
         if (legacyWaypoints.isEmpty()) return;
         ensureServerLoaded(serverKey);
+        if (!waypointWritable || !profilesWritable || !metadataWritable) return;
         String key = normalizeServerKey(serverKey);
         for (Waypoint waypoint : legacyWaypoints) {
-            waypoints.add(new Waypoint(waypoint.id(), waypoint.name(), key, waypoint.profile(), waypoint.dimension(),
-                    waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb()));
+            if (waypoints.stream().noneMatch(existing -> existing.id().equals(waypoint.id()))) {
+                waypoints.add(new Waypoint(waypoint.id(), waypoint.name(), key, waypoint.profile(), waypoint.dimension(),
+                        waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb()));
+            }
             ServerProfiles state = profileState(key);
             if (!state.names.contains(waypoint.profile())) state.names.add(waypoint.profile());
         }
-        legacyWaypoints.clear();
-        saveWaypoints();
-        saveProfiles();
-        saveMetadata();
+        if (saveWaypoints() && saveProfiles()) {
+            legacyWaypoints.clear();
+            saveMetadata();
+        }
     }
 
     void updateWaypoint(Waypoint updated) {
         ensureServerLoaded(updated.serverKey());
+        if (!waypointWritable) return;
         for (int i = 0; i < waypoints.size(); i++) {
             if (waypoints.get(i).id().equals(updated.id())) {
                 waypoints.set(i, updated);
@@ -169,16 +196,19 @@ final class WaypointConfigStore {
 
     void removeWaypoint(UUID id) {
         ensureServerLoaded(ServerScope.current());
+        if (!waypointWritable) return;
         if (waypoints.removeIf(waypoint -> waypoint.id().equals(id))) saveWaypoints();
     }
 
     void removeWaypoints(java.util.Set<UUID> ids) {
         ensureServerLoaded(ServerScope.current());
+        if (!waypointWritable) return;
         if (!ids.isEmpty() && waypoints.removeIf(waypoint -> ids.contains(waypoint.id()))) saveWaypoints();
     }
 
     int importWaypoints(String serverKey, String profile, List<WaypointTransfer.Entry> imported) {
         ensureServerLoaded(serverKey);
+        if (!waypointWritable) return 0;
         java.util.Set<WaypointTransfer.Entry> existingEntries = new java.util.HashSet<>();
         for (Waypoint existing : waypoints) {
             if (profile.equals(existing.profile())) {
@@ -199,6 +229,7 @@ final class WaypointConfigStore {
 
     boolean addQuickWaypoint(String serverKey, WaypointTransfer.Entry entry) {
         ensureServerLoaded(serverKey);
+        if (!waypointWritable) return false;
         String profile = activeProfile(serverKey);
         for (Waypoint existing : waypoints) {
             if (profile.equals(existing.profile()) && entry.name().equals(existing.name())
@@ -218,6 +249,10 @@ final class WaypointConfigStore {
         waypoints = new ArrayList<>();
         waypointRevision++;
         legacyWaypoints = new ArrayList<>();
+        settingsWritable = true;
+        profilesWritable = true;
+        metadataWritable = true;
+        waypointWritable = true;
         try {
             Files.createDirectories(waypointDirectory);
             WaypointProfileRecovery.restoreMissingFileLinks(waypointDirectory, profilesFile);
@@ -225,49 +260,63 @@ final class WaypointConfigStore {
                 loadSettings();
             } catch (IOException | RuntimeException ignored) {
                 settings = new WaypointSettings();
+                settingsWritable = false;
             }
             try {
                 loadProfiles();
             } catch (IOException | RuntimeException ignored) {
                 profiles = new LinkedHashMap<>();
+                profilesWritable = false;
             }
             List<Waypoint> oldWaypoints;
             try {
                 oldWaypoints = readMetadata();
             } catch (IOException | RuntimeException ignored) {
                 oldWaypoints = new ArrayList<>();
+                metadataWritable = false;
             }
-            migrateLegacyWaypoints(oldWaypoints);
+            if (profilesWritable) migrateLegacyWaypoints(oldWaypoints);
+            else legacyWaypoints.addAll(oldWaypoints);
             settings.sanitize();
             normalizeProfiles();
-            saveSettings();
-            saveProfiles();
-            saveMetadata();
+            if (settingsWritable) saveSettings();
+            boolean profilesSaved = !profilesWritable || saveProfiles();
+            if (metadataWritable && profilesSaved) saveMetadata();
+            else if (metadataWritable) metadataSavePending = true;
             if (reloadServer != null) ensureServerLoaded(reloadServer);
         } catch (IOException | RuntimeException ignored) {
             waypoints = new ArrayList<>();
             legacyWaypoints = new ArrayList<>();
             loadedServerKey = null;
             loadedWaypointFile = null;
+            settingsWritable = false;
+            profilesWritable = false;
+            metadataWritable = false;
+            waypointWritable = false;
         }
     }
 
     void reloadWaypointsIfChanged() {
         ensureServerLoaded(ServerScope.current());
         long now = System.currentTimeMillis();
-        if (now - lastWaypointCheck < 1000L || loadedWaypointFile == null) return;
+        if (now - lastWaypointCheck < 1000L) return;
         lastWaypointCheck = now;
+        retryPendingWrites(now);
+        if (loadedWaypointFile == null) return;
         try {
+            if (!waypointWritable) {
+                reloadCurrentServerFile();
+                return;
+            }
             long modified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
             if (modified != waypointModified) reloadCurrentServerFile();
-        } catch (IOException | RuntimeException ignored) {
-            replaceBrokenServerFile(loadedServerKey);
-        }
+        } catch (IOException | RuntimeException ignored) { }
     }
 
     void saveSettings() {
         settings.sanitize();
-        write(settingsFile, GSON.toJson(settings));
+        if (!settingsWritable) return;
+        settingsSavePending = !write(settingsFile, GSON.toJson(settings));
     }
 
     void reloadWithPlayerPosition(int x, int y, int z) {
@@ -279,6 +328,7 @@ final class WaypointConfigStore {
     }
 
     void savePlayerPosition(int x, int y, int z) {
+        if (!metadataWritable) return;
         playerSnapshot = new PlayerSnapshot(x, y, z);
         saveMetadata();
     }
@@ -286,45 +336,75 @@ final class WaypointConfigStore {
     private void ensureServerLoaded(String serverKey) {
         String key = normalizeServerKey(serverKey);
         if (key.equals(loadedServerKey) && loadedWaypointFile != null) return;
+        if (!profilesWritable) {
+            loadedServerKey = key;
+            loadedWaypointFile = null;
+            waypoints = new ArrayList<>();
+            waypointWritable = false;
+            waypointRevision++;
+            return;
+        }
         ServerProfiles state = profileState(key);
         try {
             Files.createDirectories(waypointDirectory);
             Path file = resolveServerFile(state.file);
-            if (file == null || !Files.isRegularFile(file)) {
+            if (file == null) {
                 createFreshServerFile(key);
                 return;
             }
+            if (Files.notExists(file)) {
+                loadedServerKey = key;
+                loadedWaypointFile = file;
+                waypoints = new ArrayList<>();
+                waypointWritable = true;
+                waypointRevision++;
+                saveWaypoints();
+                return;
+            }
+            if (!Files.isRegularFile(file)) {
+                bindUnreadableServerFile(key, file);
+                return;
+            }
             List<Waypoint> loaded = readServerWaypoints(file);
-            if (rekeyWaypoints(loaded, key)) writeServerWaypoints(file, loaded);
+            boolean rewritePending = false;
+            if (rekeyWaypoints(loaded, key) || lastReadNeededSchemaUpgrade) {
+                rewritePending = !writeServerWaypoints(file, loaded);
+            }
             loadedServerKey = key;
             loadedWaypointFile = file;
             waypoints = loaded;
+            waypointWritable = true;
+            waypointSavePending = rewritePending;
             waypointRevision++;
             waypointModified = Files.getLastModifiedTime(file).toMillis();
         } catch (IOException | RuntimeException ignored) {
-            replaceBrokenServerFile(key);
+            bindUnreadableServerFile(key, resolveServerFile(state.file));
         }
     }
 
     private void reloadCurrentServerFile() {
         try {
             List<Waypoint> loaded = readServerWaypoints(loadedWaypointFile);
+            boolean rewritePending = false;
+            if (lastReadNeededSchemaUpgrade) {
+                rewritePending = !writeServerWaypoints(loadedWaypointFile, loaded);
+            }
             waypoints = loaded;
+            waypointWritable = true;
+            waypointSavePending = rewritePending;
             waypointRevision++;
             waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
         } catch (IOException | RuntimeException ignored) {
-            replaceBrokenServerFile(loadedServerKey);
+            waypointWritable = false;
         }
     }
 
-    private void replaceBrokenServerFile(String serverKey) {
-        try {
-            createFreshServerFile(normalizeServerKey(serverKey));
-        } catch (RuntimeException ignored) {
-            waypoints = new ArrayList<>();
-            waypointRevision++;
-            loadedWaypointFile = null;
-        }
+    private void bindUnreadableServerFile(String serverKey, Path file) {
+        loadedServerKey = normalizeServerKey(serverKey);
+        loadedWaypointFile = file;
+        waypoints = new ArrayList<>();
+        waypointWritable = false;
+        waypointRevision++;
     }
 
     private void createFreshServerFile(String serverKey) {
@@ -334,6 +414,7 @@ final class WaypointConfigStore {
         loadedServerKey = key;
         loadedWaypointFile = waypointDirectory.resolve(state.file);
         waypoints = new ArrayList<>();
+        waypointWritable = true;
         saveProfiles();
         saveWaypoints();
     }
@@ -346,6 +427,7 @@ final class WaypointConfigStore {
             return loaded == null ? new ArrayList<>() : new ArrayList<>(loaded);
         }
         JsonObject object = root.getAsJsonObject();
+        requireSupportedSchema(object);
         playerSnapshot = readPlayerSnapshot(object.get("Player"));
         if (!object.has("waypoints")) return new ArrayList<>();
         List<Waypoint> loaded = GSON.fromJson(object.get("waypoints"), WAYPOINT_LIST);
@@ -355,14 +437,24 @@ final class WaypointConfigStore {
     private void loadSettings() throws IOException {
         if (!Files.isRegularFile(settingsFile)) return;
         WaypointSettings loaded = GSON.fromJson(Files.readString(settingsFile), WaypointSettings.class);
-        if (loaded != null) settings = loaded;
+        if (loaded != null) {
+            if (loaded.schemaVersion > CURRENT_SCHEMA_VERSION) throw new IOException("Unsupported settings schema");
+            settings = loaded;
+        }
     }
 
     private void loadProfiles() throws IOException {
         if (!Files.isRegularFile(profilesFile)) return;
         Type type = new TypeToken<Map<String, ServerProfiles>>() { }.getType();
         Map<String, ServerProfiles> loaded = GSON.fromJson(Files.readString(profilesFile), type);
-        if (loaded != null) profiles = new LinkedHashMap<>(loaded);
+        if (loaded != null) {
+            for (ServerProfiles state : loaded.values()) {
+                if (state != null && state.schemaVersion > CURRENT_SCHEMA_VERSION) {
+                    throw new IOException("Unsupported profiles schema");
+                }
+            }
+            profiles = new LinkedHashMap<>(loaded);
+        }
     }
 
     private void migrateLegacyWaypoints(List<Waypoint> oldWaypoints) {
@@ -384,11 +476,13 @@ final class WaypointConfigStore {
                 try {
                     merged.addAll(readServerWaypoints(file));
                 } catch (IOException | RuntimeException ignored) {
-                    file = null;
+                    legacyWaypoints.addAll(entry.getValue());
+                    continue;
                 }
             } else {
                 file = null;
             }
+            String previousFile = state.file;
             if (file == null) {
                 state.file = newServerFileName();
                 file = waypointDirectory.resolve(state.file);
@@ -397,7 +491,10 @@ final class WaypointConfigStore {
                 if (merged.stream().noneMatch(existing -> existing.id().equals(waypoint.id()))) merged.add(waypoint);
                 if (!state.names.contains(waypoint.profile())) state.names.add(waypoint.profile());
             }
-            writeServerWaypoints(file, merged);
+            if (!writeServerWaypoints(file, merged)) {
+                state.file = previousFile;
+                legacyWaypoints.addAll(entry.getValue());
+            }
         }
     }
 
@@ -415,10 +512,13 @@ final class WaypointConfigStore {
 
     private List<Waypoint> readServerWaypoints(Path file) throws IOException {
         JsonElement root = JsonParser.parseString(Files.readString(file));
+        lastReadNeededSchemaUpgrade = root.isJsonArray();
         JsonElement waypointElement;
         if (root.isJsonArray()) waypointElement = root;
         else {
             JsonObject object = root.getAsJsonObject();
+            requireSupportedSchema(object);
+            lastReadNeededSchemaUpgrade = !object.has("schemaVersion");
             if (!object.has("waypoints") || !object.get("waypoints").isJsonArray()) {
                 throw new IOException("Invalid waypoint file");
             }
@@ -429,26 +529,32 @@ final class WaypointConfigStore {
         return new ArrayList<>(loaded);
     }
 
-    private void saveWaypoints() {
+    private boolean saveWaypoints() {
         if (loadedServerKey == null || loadedWaypointFile == null) {
             ensureServerLoaded(ServerScope.current());
-            if (loadedWaypointFile == null) return;
+            if (loadedWaypointFile == null) return false;
         }
-        writeServerWaypoints(loadedWaypointFile, waypoints);
+        if (!waypointWritable) return false;
+        waypointSavePending = !writeServerWaypoints(loadedWaypointFile, waypoints);
         waypointRevision++;
+        if (waypointSavePending) return false;
         try {
             waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
         } catch (IOException ignored) { }
+        return true;
     }
 
-    private void writeServerWaypoints(Path file, List<Waypoint> values) {
+    private boolean writeServerWaypoints(Path file, List<Waypoint> values) {
         JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", CURRENT_SCHEMA_VERSION);
         root.add("waypoints", GSON.toJsonTree(values, WAYPOINT_LIST));
-        write(file, GSON.toJson(root));
+        return write(file, GSON.toJson(root));
     }
 
     private void saveMetadata() {
+        if (!metadataWritable) return;
         JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", CURRENT_SCHEMA_VERSION);
         if (playerSnapshot != null) {
             JsonObject player = new JsonObject();
             player.addProperty("X", playerSnapshot.x());
@@ -459,10 +565,14 @@ final class WaypointConfigStore {
         if (!legacyWaypoints.isEmpty()) {
             root.add("waypoints", GSON.toJsonTree(legacyWaypoints, WAYPOINT_LIST));
         }
-        write(waypointFile, GSON.toJson(root));
+        metadataSavePending = !write(waypointFile, GSON.toJson(root));
     }
 
-    private void saveProfiles() { write(profilesFile, GSON.toJson(profiles)); }
+    private boolean saveProfiles() {
+        if (!profilesWritable) return false;
+        profilesSavePending = !write(profilesFile, GSON.toJson(profiles));
+        return !profilesSavePending;
+    }
 
     private ServerProfiles profileState(String serverKey) {
         String key = normalizeServerKey(serverKey);
@@ -492,6 +602,7 @@ final class WaypointConfigStore {
     }
 
     private static void normalizeProfile(ServerProfiles state) {
+        if (state.schemaVersion <= 0) state.schemaVersion = CURRENT_SCHEMA_VERSION;
         if (state.names == null) state.names = new ArrayList<>();
         state.names.removeIf(name -> name == null || name.isBlank());
         if (state.names.isEmpty()) state.names.add("Default");
@@ -521,6 +632,7 @@ final class WaypointConfigStore {
     }
 
     private static final class ServerProfiles {
+        int schemaVersion = CURRENT_SCHEMA_VERSION;
         List<String> names = new ArrayList<>(List.of("Default"));
         int activeIndex;
         String file;
@@ -538,18 +650,50 @@ final class WaypointConfigStore {
 
     private record PlayerSnapshot(int x, int y, int z) { }
 
-    private static void write(Path file, String json) {
-        Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+    private void retryPendingWrites(long now) {
+        if (now - lastPersistenceRetry < 1000L) return;
+        lastPersistenceRetry = now;
+        if (settingsSavePending && settingsWritable) saveSettings();
+        if (profilesSavePending && profilesWritable) saveProfiles();
+        if (metadataSavePending && metadataWritable && !profilesSavePending) saveMetadata();
+        if (waypointSavePending && waypointWritable && loadedWaypointFile != null) saveWaypoints();
+    }
+
+    private static void requireSupportedSchema(JsonObject object) throws IOException {
+        if (!object.has("schemaVersion")) return;
+        try {
+            int version = object.get("schemaVersion").getAsInt();
+            if (version > CURRENT_SCHEMA_VERSION) throw new IOException("Unsupported data schema");
+        } catch (RuntimeException exception) {
+            throw new IOException("Invalid data schema", exception);
+        }
+    }
+
+    private static boolean write(Path file, String json) {
+        Path temporary = null;
         try {
             Files.createDirectories(file.getParent());
+            temporary = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".tmp");
             Files.writeString(temporary, json, StandardCharsets.UTF_8);
             try {
                 Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException ignored) {
                 Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
             }
-        } catch (IOException | RuntimeException ignored) {
-            try { Files.deleteIfExists(temporary); } catch (IOException ignoredAgain) { }
+            synchronized (REPORTED_WRITE_FAILURES) {
+                REPORTED_WRITE_FAILURES.remove(file);
+            }
+            return true;
+        } catch (IOException | RuntimeException exception) {
+            if (temporary != null) {
+                try { Files.deleteIfExists(temporary); } catch (IOException ignoredAgain) { }
+            }
+            synchronized (REPORTED_WRITE_FAILURES) {
+                if (REPORTED_WRITE_FAILURES.add(file)) {
+                    LOGGER.error("Could not save Waypoints Plus data to {}", file, exception);
+                }
+            }
+            return false;
         }
     }
 }

@@ -39,7 +39,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         manageWaypointsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.manage", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_SEMICOLON, CATEGORY));
         reloadWaypointsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.waypointsplus.reload", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UP, CATEGORY));
+                "key.waypointsplus.reload", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         previousProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.profile_previous", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_LEFT, CATEGORY));
         nextProfileKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(

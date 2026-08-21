@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import pl.slogerski.waypointsplus.core.Waypoint;
+import pl.slogerski.waypointsplus.core.WaypointDimensionFilter;
 
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +18,7 @@ final class WaypointManagerScreen extends Screen {
     private final int requestedPage;
     private final Selection selection;
     private List<Waypoint> entries = List.of();
+    private List<String> dimensionFilters = List.of(WaypointDimensionFilter.ALL);
     private int page;
     private String profileName = "Default";
 
@@ -34,9 +36,16 @@ final class WaypointManagerScreen extends Screen {
         List<String> profiles = store.profiles(scope);
         int profileIndex = store.activeProfileIndex(scope);
         profileName = profiles.get(profileIndex);
-        entries = store.waypoints().stream()
+        List<Waypoint> profileEntries = store.waypoints().stream()
                 .filter(w -> scope.equals(w.serverKey()) && profileName.equals(w.profile())).toList();
-        selection.ids.retainAll(entries.stream().map(Waypoint::id).toList());
+        dimensionFilters = WaypointDimensionFilter.available(
+                profileEntries.stream().map(Waypoint::dimension).toList());
+        if (!dimensionFilters.contains(selection.dimensionFilter)) {
+            selection.dimensionFilter = WaypointDimensionFilter.ALL;
+        }
+        entries = profileEntries.stream()
+                .filter(w -> WaypointDimensionFilter.matches(selection.dimensionFilter, w.dimension())).toList();
+        selection.ids.retainAll(new java.util.HashSet<>(entries.stream().map(Waypoint::id).toList()));
         int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         page = Math.max(0, Math.min(requestedPage, pages - 1));
         int left = width / 2 - 181;
@@ -51,7 +60,7 @@ final class WaypointManagerScreen extends Screen {
             minecraft.gui.setScreen(new WaypointManagerScreen(parent));
         }).pos(width / 2 + 77, 25).size(28, 20).build()).active = profileIndex + 1 < profiles.size();
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Export ↑", "Eksportuj ↑")), b -> exportSelected())
-                .pos(width / 2 + 113, 25).size(68, 20).build()).active = !selection.ids.isEmpty();
+                .pos(width / 2 + 114, 25).size(68, 20).build()).active = !selection.ids.isEmpty();
         boolean allSelected = !entries.isEmpty() && selection.ids.size() == entries.size();
         addRenderableWidget(Button.builder(Component.empty(), b -> toggleAll(allSelected))
                 .pos(left, 48).size(20, 20).build()).active = !entries.isEmpty();
@@ -69,7 +78,7 @@ final class WaypointManagerScreen extends Screen {
             if (WaypointTeleport.available(minecraft, waypoint)) {
                 addRenderableWidget(Button.builder(Component.literal("/tp"),
                         b -> teleportWaypoint(waypoint))
-                        .pos(left + 240, rowY).size(33, 20).build());
+                        .pos(left + 239, rowY).size(33, 20).build());
             }
             addRenderableWidget(Button.builder(Component.literal(UiText.get("Edit", "Edytuj")),
                     b -> editWaypoint(waypoint))
@@ -82,10 +91,12 @@ final class WaypointManagerScreen extends Screen {
                 .pos(left, navY).size(36, 20).build(); previous.active = page > 0; addRenderableWidget(previous);
         Button next = Button.builder(Component.literal(">"), b -> changePage(page + 1))
                 .pos(left + 43, navY).size(36, 20).build(); next.active = page + 1 < pages; addRenderableWidget(next);
+        addRenderableWidget(Button.builder(Component.literal(dimensionFilterLabel()), b -> cycleDimensionFilter())
+                .pos(left + 85, navY).size(75, 20).build()).active = dimensionFilters.size() > 1;
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Settings", "Ustawienia")),
-                b -> openSettings()).pos(left + 85, navY).size(191, 20).build());
+                b -> openSettings()).pos(left + 166, navY).size(130, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Done", "Gotowe")), b -> onClose())
-                .pos(left + 282, navY).size(80, 20).build());
+                .pos(left + 302, navY).size(60, 20).build());
     }
 
     private void toggle(Waypoint waypoint) {
@@ -119,6 +130,20 @@ final class WaypointManagerScreen extends Screen {
         minecraft.gui.setScreen(new WaypointSettingsScreen(this));
     }
 
+    private void cycleDimensionFilter() {
+        selection.dimensionFilter = WaypointDimensionFilter.next(selection.dimensionFilter, dimensionFilters);
+        selection.ids.clear();
+        selection.confirmSingleDelete = null;
+        selection.confirmDelete = false;
+        minecraft.gui.setScreen(new WaypointManagerScreen(parent, 0, selection));
+    }
+
+    private String dimensionFilterLabel() {
+        return selection.dimensionFilter.isEmpty()
+                ? UiText.get("All", "Wszystkie")
+                : WaypointDimensionFilter.label(selection.dimensionFilter);
+    }
+
     private void toggleAll(boolean allSelected) {
         selection.confirmSingleDelete = null;
         if (allSelected) selection.ids.clear();
@@ -140,11 +165,23 @@ final class WaypointManagerScreen extends Screen {
         selection.confirmSingleDelete = null;
         try {
             List<WaypointTransfer.Entry> imported = WaypointTransfer.importText(minecraft.keyboardHandler.getClipboard());
-            int added = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
-            selection.message = UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(added);
+            if (!WaypointTransfer.customDimensions(imported).isEmpty()) {
+                minecraft.gui.setScreen(new ImportDimensionWarningScreen(this, imported,
+                        minecraft.level.dimension().identifier().toString(),
+                        values -> finishImport(scope, values)));
+                return;
+            }
+            finishImport(scope, imported);
+            return;
         } catch (RuntimeException exception) {
             selection.message = UiText.get("Invalid waypoint data in clipboard", "Nieprawidłowe dane w schowku");
         }
+        minecraft.gui.setScreen(new WaypointManagerScreen(parent, page, selection));
+    }
+
+    private void finishImport(String scope, List<WaypointTransfer.Entry> imported) {
+        int added = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
+        selection.message = UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(added);
         minecraft.gui.setScreen(new WaypointManagerScreen(parent, page, selection));
     }
 
@@ -190,6 +227,16 @@ final class WaypointManagerScreen extends Screen {
         int from = page * PAGE_SIZE;
         for (int i = from; i < Math.min(entries.size(), from + PAGE_SIZE); i++) {
             Waypoint w = entries.get(i);
+            String rowDimension = w.dimension();
+            String dimensionLabel = WaypointDimensionFilter.label(rowDimension);
+            float labelScale = 0.75f;
+            float labelX = left - 6 - font.width(dimensionLabel) * labelScale;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(labelX, 80 + (i - from) * 25);
+            graphics.pose().scale(labelScale, labelScale);
+            graphics.text(font, dimensionLabel, 0, 0,
+                    WaypointDimensionFilter.labelColor(rowDimension), true);
+            graphics.pose().popMatrix();
             graphics.text(font, selection.ids.contains(w.id()) ? "☑" : "☐",
                     left + 4, 79 + (i - from) * 25, 0xFFACACAC, true);
             if (w.id().equals(selection.confirmSingleDelete)) {
@@ -220,6 +267,7 @@ final class WaypointManagerScreen extends Screen {
 
     private static final class Selection {
         final Set<java.util.UUID> ids = new HashSet<>();
+        String dimensionFilter = WaypointDimensionFilter.ALL;
         String message = "";
         boolean confirmDelete;
         java.util.UUID confirmSingleDelete;
