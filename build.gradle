@@ -3,7 +3,7 @@ import java.util.jar.JarFile
 
 plugins {
     id "fabric-loom" version "1.17.12" apply false
-    id "net.fabricmc.fabric-loom" version "1.17.12" apply false
+    id "net.fabricmc.fabric-loom" version "1.17.17" apply false
 }
 
 def versionManifest = gradle.ext.waypointsVersionManifest
