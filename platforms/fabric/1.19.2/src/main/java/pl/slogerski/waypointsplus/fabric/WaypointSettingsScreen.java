@@ -19,6 +19,7 @@ final class WaypointSettingsScreen extends Screen {
     private RemoteContentSession<RemoteTopDonate> topDonateSession;
     private RemoteTopDonate topDonate = RemoteTopDonate.EMPTY;
     private boolean topDonateOpened;
+    private boolean topDonateExpanded;
     private int left, top;
     private int profileIndex;
     private String profileName = "Default";
@@ -37,6 +38,7 @@ final class WaypointSettingsScreen extends Screen {
 
     @Override protected void init() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
+        topDonateExpanded = settings.topDonateExpanded;
         WaypointConfigStore store = WaypointsPlusClient.config();
         String serverKey = ServerScope.current();
         java.util.List<String> profiles = store.profiles(serverKey);
@@ -46,8 +48,15 @@ final class WaypointSettingsScreen extends Screen {
         profileName = virtualProfile ? UiText.get("New Profile", "Nowy profil") : profiles.get(profileIndex);
         left = width / 2 - 150;
         top = Math.max(5, (height - (virtualProfile ? 240 : 252)) / 2);
-        if (hasTopDonatePanelSpace()) openTopDonate();
-        else closeTopDonate();
+        if (hasTopDonatePanelSpace()) {
+            if (topDonateExpanded) openTopDonate(false);
+            else closeTopDonate();
+            String heading = UiText.get("Top Supporters", "Topka wspierających");
+            addDrawableChild(ButtonWidget.builder(Text.literal(topDonateExpanded ? "△" : "▽"), b -> {
+                toggleTopDonate();
+                b.setMessage(Text.literal(topDonateExpanded ? "△" : "▽"));
+            }).dimensions(left + 307 + textRenderer.getWidth(heading), top + 5, 14, 14).build());
+        } else closeTopDonate();
         addDrawableChild(ButtonWidget.builder(Text.literal("<"), b -> openProfile(profileIndex - 1, profiles.size(), serverKey))
                 .dimensions(width / 2 - 125, top + 27, 28, 20).build()).active = profileIndex > 0;
         addDrawableChild(ButtonWidget.builder(Text.literal(">"), b -> openProfile(profileIndex + 1, profiles.size(), serverKey))
@@ -193,6 +202,7 @@ final class WaypointSettingsScreen extends Screen {
         int panelTop = top;
         context.drawTextWithShadow(textRenderer,
                 Text.literal(UiText.get("Top Supporters", "Topka wspierających")), panelLeft, panelTop + 8, 0xFF039E00);
+        if (!topDonateExpanded) return;
         java.util.List<TopDonateEntry> entries = topDonate.entries();
         if (entries.isEmpty()) {
             context.drawTextWithShadow(textRenderer, Text.literal(UiText.get("No data", "Brak danych")),
@@ -220,10 +230,28 @@ final class WaypointSettingsScreen extends Screen {
         return text.length() > length ? text.substring(0, length - 1) + "…" : text;
     }
 
-    private void openTopDonate() {
+    private void toggleTopDonate() {
+        topDonateExpanded = !topDonateExpanded;
+        persistTopDonateState();
+        if (topDonateExpanded) openTopDonate(true);
+        else closeTopDonate();
+    }
+
+    private void persistTopDonateState() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        WaypointSettingsSnapshot current = WaypointSettingsSnapshot.capture(settings);
+        session.baseline.restore(settings);
+        settings.topDonateExpanded = topDonateExpanded;
+        WaypointsPlusClient.config().saveSettings();
+        current.restore(settings);
+        settings.topDonateExpanded = topDonateExpanded;
+    }
+
+    private void openTopDonate(boolean forceRefresh) {
         if (topDonateOpened) return;
         topDonateOpened = true;
-        RemoteContentSession<RemoteTopDonate> opened = RemoteContentService.getDefault().openTopDonate();
+        RemoteContentSession<RemoteTopDonate> opened =
+                RemoteContentService.getDefault().openTopDonate(forceRefresh);
         topDonateSession = opened;
         topDonate = opened.snapshot();
         opened.refresh().thenAccept(snapshot -> client.execute(() -> {

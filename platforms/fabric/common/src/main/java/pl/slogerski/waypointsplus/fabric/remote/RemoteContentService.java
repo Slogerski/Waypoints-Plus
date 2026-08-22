@@ -82,7 +82,12 @@ public final class RemoteContentService {
     }
 
     public RemoteContentSession<RemoteTopDonate> openTopDonate() {
-        return openJson("top-donate", "top-donate.json", RemoteTopDonate.EMPTY, this::parseTopDonate);
+        return openTopDonate(false);
+    }
+
+    public RemoteContentSession<RemoteTopDonate> openTopDonate(boolean forceRefresh) {
+        return openJson("top-donate", "top-donate.json", RemoteTopDonate.EMPTY, forceRefresh,
+                this::parseTopDonate);
     }
 
     public RemoteContentSession<RemoteAboutAdSnapshot> openAboutAd() {
@@ -98,17 +103,28 @@ public final class RemoteContentService {
 
     private <T> RemoteContentSession<T> openJson(String cacheName, String endpoint, T fallback,
                                                    Function<JsonObject, T> parser) {
+        return openJson(cacheName, endpoint, fallback, false, parser);
+    }
+
+    private <T> RemoteContentSession<T> openJson(String cacheName, String endpoint, T fallback,
+                                                   boolean forceRefresh, Function<JsonObject, T> parser) {
         Optional<T> cached = readJson(cacheName, parser);
         T snapshot = cached.orElse(fallback);
         return new RemoteContentSession<>(snapshot,
-                refreshJson(cacheName, endpoint, snapshot, cached.isPresent(), parser).exceptionally(error -> snapshot));
+                refreshJson(cacheName, endpoint, snapshot, cached.isPresent(), forceRefresh, parser)
+                        .exceptionally(error -> snapshot));
     }
 
     private <T> CompletableFuture<T> refreshJson(String cacheName, String endpoint, T current, boolean hasValidCache,
                                                    Function<JsonObject, T> parser) {
+        return refreshJson(cacheName, endpoint, current, hasValidCache, false, parser);
+    }
+
+    private <T> CompletableFuture<T> refreshJson(String cacheName, String endpoint, T current, boolean hasValidCache,
+                                                   boolean forceRefresh, Function<JsonObject, T> parser) {
         CacheMeta meta = readMeta(cacheName);
         long now = System.currentTimeMillis();
-        if (now < meta.nextAttempt || hasValidCache
+        if (now < meta.nextAttempt || !forceRefresh && hasValidCache
                 && meta.checkedAt > 0 && now - meta.checkedAt < TTL_MILLIS) {
             return CompletableFuture.completedFuture(current);
         }

@@ -47,6 +47,7 @@ public final class LegacyGsonCompatibilityCheck {
         WaypointSettings legacySettings = gson.fromJson("{\"scale\":1.0}", WaypointSettings.class);
         legacySettings.sanitize();
         require(legacySettings.schemaVersion == 1, "Legacy settings schema was not upgraded");
+        require(legacySettings.topDonateExpanded, "Legacy settings should expand supporters by default");
         String deeplyNested = "[".repeat(65) + "]".repeat(65);
         try {
             WaypointTransfer.importText(deeplyNested);

@@ -9,6 +9,7 @@ final class WaypointSettings {
     boolean laserEnabled = false;
     boolean menuBackground = true;
     boolean crossDimensionWaypoints = true;
+    boolean topDonateExpanded = true;
     String language = "en";
     float scale = 1.15f;
     int markerArgb = 0xCCDBDBD3;
