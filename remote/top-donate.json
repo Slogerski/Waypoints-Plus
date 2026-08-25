@@ -1,32 +1,4 @@
 {
   "schema": 1,
-  "entries": [
-    {
-      "name": "Slogerski",
-      "amount": "443",
-      "currency": "PLN",
-      "color": "#FF1111"
-    },
-    {
-      "name": "xMelonekMaX",
-      "amount": "52,50",
-      "currency": "$",
-      "color": "#FF20C410"
-    },
-    {
-      "name": "TestPlayer1",
-      "amount": "30",
-      "currency": "$"
-    },
-    {
-      "name": "TestPlayer2",
-      "amount": "20",
-      "currency": "$"
-    },
-    {
-      "name": "TestPlayer3",
-      "amount": "10",
-      "currency": "$"
-    }
-  ]
+  "entries": []
 }
