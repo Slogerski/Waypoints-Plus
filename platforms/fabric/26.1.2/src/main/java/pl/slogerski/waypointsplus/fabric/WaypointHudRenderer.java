@@ -2,17 +2,19 @@ package pl.slogerski.waypointsplus.fabric;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
+import org.joml.Quaternionf;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
@@ -30,53 +32,65 @@ final class WaypointHudRenderer {
     private static String cachedDimension;
     private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
+    private static volatile PreparedFrame preparedFrame = emptyFrame();
 
     private WaypointHudRenderer() { }
 
     static void register() {
-        LevelRenderEvents.COLLECT_SUBMITS.register(WaypointHudRenderer::render);
+        LevelRenderEvents.END_EXTRACTION.register(WaypointHudRenderer::prepareFrame);
+        LevelRenderEvents.COLLECT_SUBMITS.register(WaypointHudRenderer::renderLasers);
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WaypointHudRenderer::renderLabels);
     }
 
-    private static void render(LevelRenderContext context) {
+    private static void renderLasers(LevelRenderContext context) {
+        PreparedFrame frame = preparedFrame;
+        if (frame.lasers.isEmpty()) return;
+        PoseStack pose = context.poseStack();
+        SubmitNodeCollector submits = context.submitNodeCollector();
+        for (PreparedLaser laser : frame.lasers) {
+            drawLaser(pose, submits, frame.cameraPosition, laser.target, laser.color);
+        }
+    }
+
+    private static void prepareFrame(LevelExtractionContext context) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null) return;
+        if (minecraft.player == null || minecraft.level == null) {
+            preparedFrame = emptyFrame();
+            return;
+        }
         WaypointConfigStore store = WaypointsPlusClient.config();
         store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
-        if (!settings.enabled) return;
+        if (!settings.enabled) {
+            preparedFrame = emptyFrame();
+            return;
+        }
 
         String dimension = minecraft.level.dimension().identifier().toString();
         String serverKey = ServerScope.current();
         String profile = store.activeProfile(serverKey);
         store.claimLegacy(serverKey);
-        Camera camera = minecraft.gameRenderer.getMainCamera();
+        Camera camera = context.camera();
         Vec3 cameraPos = camera.position();
-        PoseStack pose = context.poseStack();
-        SubmitNodeCollector submits = context.submitNodeCollector();
-
-        List<PreparedWaypoint> visible = new ArrayList<>();
+        List<PreparedLabel> labels = new ArrayList<>();
+        List<PreparedLaser> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
                 settings.crossDimensionWaypoints)) {
             if (isInView(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
-                visible.add(prepared);
+                labels.add(prepareLabel(minecraft, cameraPos, prepared.waypoint(), prepared.target(), settings));
+                if (settings.laserEnabled) {
+                    lasers.add(new PreparedLaser(prepared.target(),
+                            parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb)));
+                }
             }
         }
-        if (settings.laserEnabled) {
-            for (PreparedWaypoint prepared : visible) {
-                drawLaser(pose, submits, cameraPos, prepared.target(),
-                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
-            }
-        }
-        for (PreparedWaypoint prepared : visible) {
-            renderLabel(minecraft, pose, submits, camera, cameraPos,
-                    prepared.waypoint(), prepared.target(), settings);
-        }
+        preparedFrame = new PreparedFrame(List.copyOf(labels), List.copyOf(lasers),
+                cameraPos, new Quaternionf(camera.rotation()));
     }
 
-    private static void renderLabel(Minecraft minecraft, PoseStack pose, SubmitNodeCollector submits,
-                                    Camera camera, Vec3 cameraPos, Waypoint waypoint,
-                                    DisplayTarget target, WaypointSettings settings) {
+    private static PreparedLabel prepareLabel(Minecraft minecraft, Vec3 cameraPos, Waypoint waypoint,
+                                              DisplayTarget target, WaypointSettings settings) {
         double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
         double actualDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         double visibleDistance = Math.min(actualDistance, MAX_BILLBOARD_DISTANCE);
@@ -98,20 +112,38 @@ final class WaypointHudRenderer {
         int background = settings.background
                 ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
                 : 0;
+        return new PreparedLabel(dx, dy, dz, scale, text, x, textWidth, color, background);
+    }
 
-        pose.pushPose();
-        pose.translate(dx, dy, dz);
-        pose.mulPose(camera.rotation());
-        pose.scale(scale, -scale, scale);
+    private static void renderLabels(LevelRenderContext context) {
+        PreparedFrame frame = preparedFrame;
+        if (frame.labels.isEmpty()) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        PoseStack pose = context.poseStack();
+        MultiBufferSource.BufferSource buffers = context.bufferSource();
 
-        OrderedSubmitNodeCollector panelSubmits = submits.order(0);
-        OrderedSubmitNodeCollector textSubmits = submits.order(1);
-        panelSubmits.submitCustomGeometry(pose, RenderTypes.textBackgroundSeeThrough(),
-                (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
-                        x + textWidth + 3.0f, 8.0f, background, color));
-        textSubmits.submitText(pose, x, -3.0f, text.getVisualOrderText(), false,
-                Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, color, 0, 0);
-        pose.popPose();
+        for (PreparedLabel label : frame.labels) {
+            pose.pushPose();
+            pose.translate(label.dx, label.dy, label.dz);
+            pose.mulPose(frame.cameraRotation);
+            pose.scale(label.scale, -label.scale, label.scale);
+            drawRoundedPanel(buffers.getBuffer(RenderTypes.textBackgroundSeeThrough()), pose.last().pose(),
+                    label.x - 3.0f, -7.0f, label.x + label.textWidth + 3.0f, 8.0f,
+                    label.background, label.color);
+            pose.popPose();
+        }
+        buffers.endBatch(RenderTypes.textBackgroundSeeThrough());
+
+        for (PreparedLabel label : frame.labels) {
+            pose.pushPose();
+            pose.translate(label.dx, label.dy, label.dz);
+            pose.mulPose(frame.cameraRotation);
+            pose.scale(label.scale, -label.scale, label.scale);
+            minecraft.font.drawInBatch(label.text.getVisualOrderText(), label.x, -3.0f, label.color, false,
+                    pose.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH, 0, FULL_BRIGHT);
+            pose.popPose();
+        }
+        buffers.endBatch();
     }
 
     private static void drawRoundedPanel(VertexConsumer vertices, Matrix4fc matrix,
@@ -222,7 +254,19 @@ final class WaypointHudRenderer {
         return UiText.get(formatted, formatted.replace('.', ','));
     }
 
+    private static PreparedFrame emptyFrame() {
+        return new PreparedFrame(List.of(), List.of(), Vec3.ZERO, new Quaternionf());
+    }
+
     private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
+
+    private record PreparedLabel(double dx, double dy, double dz, float scale, Component text,
+                                 float x, int textWidth, int color, int background) { }
+
+    private record PreparedLaser(DisplayTarget target, int color) { }
+
+    private record PreparedFrame(List<PreparedLabel> labels, List<PreparedLaser> lasers,
+                                 Vec3 cameraPosition, Quaternionf cameraRotation) { }
 
     private record DisplayTarget(double x, double y, double z) { }
 }

@@ -5,12 +5,12 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhase;
+import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.feature.TextFeatureRenderer;
 import net.minecraft.client.renderer.feature.submit.SubmitNode;
@@ -36,9 +36,8 @@ final class WaypointHudRenderer {
     private static String cachedDimension;
     private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
-    private static final SubmitRenderPhase<SubmitNode> AFTER_TERRAIN =
-            new SubmitRenderPhase<>(collection -> collection.afterTerrain);
-    private static RenderMode renderMode = RenderMode.DIRECT;
+    private static final SubmitRenderPhase<SubmitNode> LABEL_OVERLAY = SubmitRenderPhases.ALWAYS_ON_TOP;
+    private static RenderMode renderMode = RenderMode.PHASED;
 
     private WaypointHudRenderer() { }
 
@@ -145,13 +144,13 @@ final class WaypointHudRenderer {
     private static void submitPhasedLabel(PoseStack pose, OrderedSubmitNodeCollector panels,
                                           OrderedSubmitNodeCollector texts, Component text, float x,
                                           int textWidth, int background, int color) {
-        panels.submitCustom(AFTER_TERRAIN, new CustomFeatureRenderer.Submit(
+        panels.submitCustom(LABEL_OVERLAY, new CustomFeatureRenderer.Submit(
                 pose.last().copy(),
                 RenderTypes.textBackgroundSeeThrough(),
                 (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
                         x + textWidth + 3.0f, 8.0f, background, color)
         ));
-        texts.submitCustom(AFTER_TERRAIN, new TextFeatureRenderer.Submit(
+        texts.submitCustom(LABEL_OVERLAY, new TextFeatureRenderer.Submit(
                 new Matrix4f(pose.last().pose()),
                 x,
                 -3.0f,
