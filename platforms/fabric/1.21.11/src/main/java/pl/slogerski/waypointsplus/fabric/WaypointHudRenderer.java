@@ -2,6 +2,8 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.Camera;
@@ -10,7 +12,12 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.command.RenderCommandQueue;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.resource.Resource;
+import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceType;
+import net.minecraft.text.StyleSpriteSource;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import pl.slogerski.waypointsplus.core.Waypoint;
@@ -18,23 +25,63 @@ import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
+    private static final Identifier TEXT_EFFECTS_CONFIG = Identifier.of(
+            "minecraft", "shaders/include/texteffects_config.glsl");
+    private static final StyleSpriteSource.Font COMPATIBILITY_FONT =
+            new StyleSpriteSource.Font(Identifier.of("waypointsplus", "waypoint"));
+    private static final List<Identifier> VANILLA_FONT_DEFINITIONS = List.of(
+            Identifier.of("minecraft", "font/default.json"),
+            Identifier.of("minecraft", "font/uniform.json"),
+            Identifier.of("minecraft", "font/alt.json"));
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
     private static String cachedDimension;
     private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
+    private static volatile boolean textEffectsCompatibilityActive;
 
     private WaypointHudRenderer() { }
 
     static void register() {
+        registerTextEffectsCompatibility();
         WorldRenderEvents.END_MAIN.register(WaypointHudRenderer::render);
+    }
+
+    private static void registerTextEffectsCompatibility() {
+        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
+                new SimpleSynchronousResourceReloadListener() {
+                    @Override
+                    public Identifier getFabricId() {
+                        return Identifier.of("waypointsplus", "text_effects_compatibility");
+                    }
+
+                    @Override
+                    public void reload(ResourceManager manager) {
+                        textEffectsCompatibilityActive = manager.getResource(TEXT_EFFECTS_CONFIG).isPresent()
+                                && !hasPlayerFontPack(manager);
+                    }
+                });
+    }
+
+    private static boolean hasPlayerFontPack(ResourceManager manager) {
+        Set<String> selectedPacks = new HashSet<>(MinecraftClient.getInstance().options.resourcePacks);
+        selectedPacks.addAll(MinecraftClient.getInstance().options.incompatibleResourcePacks);
+        for (Identifier definition : VANILLA_FONT_DEFINITIONS) {
+            for (Resource resource : manager.getAllResources(definition)) {
+                String packId = resource.getPackId();
+                if (packId.startsWith("file/") && selectedPacks.contains(packId)) return true;
+            }
+        }
+        return false;
     }
 
     private static void render(WorldRenderContext context) {
@@ -94,7 +141,9 @@ final class WaypointHudRenderer {
         if (settings.showCoordinates) {
             label += "  " + Math.round(target.x) + " " + Math.round(target.y) + " " + Math.round(target.z);
         }
-        Text text = Text.literal(label);
+        Text text = textEffectsCompatibilityActive
+                ? Text.literal(label).styled(style -> style.withFont(COMPATIBILITY_FONT))
+                : Text.literal(label);
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int background = settings.background
