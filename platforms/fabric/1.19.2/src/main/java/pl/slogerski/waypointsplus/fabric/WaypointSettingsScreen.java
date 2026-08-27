@@ -10,7 +10,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 
 final class WaypointSettingsScreen extends Screen {
-    private static final int PURPLE = 0xFF7C3AED, MAGENTA = 0xFFD946EF, RED = 0xFFFF405D;
     private static final int FIELD_ACCENT = 0xFFC43D9D;
     private final Screen parent;
     private final int requestedProfileIndex;
@@ -185,10 +184,14 @@ final class WaypointSettingsScreen extends Screen {
         renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         int bottom = virtualProfile ? top + 150 : top + 250;
-        drawPanel(context, left, top, left + 300, bottom);
+        GuiPalette.panel(context, left, top, left + 300, bottom);
         if (hasTopDonatePanelSpace()) drawTopDonate(context);
         super.render(matrices, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 8, MAGENTA);
+        matrices.push();
+        matrices.translate(width / 2.0f, top + 7.0f, 0.0f);
+        matrices.scale(1.2f, 1.2f, 1.0f);
+        context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
+        matrices.pop();
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;
     }
@@ -278,29 +281,6 @@ final class WaypointSettingsScreen extends Screen {
         context.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, FIELD_ACCENT);
     }
 
-    private static void gradientOutline(DrawContext context, int left, int top, int right, int bottom) {
-        int segments = 24;
-        for (int i = 0; i < segments; i++) {
-            int x1 = left + 2 + (right - left - 4) * i / segments;
-            int x2 = left + 2 + (right - left - 4) * (i + 1) / segments;
-            context.fill(x1, top, x2, top + 1, mix(PURPLE, RED, i / 23.0f));
-            context.fill(x1, bottom - 1, x2, bottom, mix(PURPLE, RED, i / 23.0f));
-        }
-        context.fill(left, top + 2, left + 1, bottom - 2, PURPLE);
-        context.fill(right - 1, top + 2, right, bottom - 2, RED);
-        context.fill(left + 1, top + 1, left + 2, top + 2, PURPLE);
-        context.fill(right - 2, top + 1, right - 1, top + 2, RED);
-        context.fill(left + 1, bottom - 2, left + 2, bottom - 1, PURPLE);
-        context.fill(right - 2, bottom - 2, right - 1, bottom - 1, RED);
-    }
-
-    private static int mix(int a, int b, float t) {
-        int r = (int)(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t);
-        int g = (int)(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
-        int blue = (int)((a & 255) * (1 - t) + (b & 255) * t);
-        return 0xFF000000 | r << 16 | g << 8 | blue;
-    }
-
     private static void roundedFill(DrawContext context, int left, int top, int right, int bottom, int color) {
         context.fill(left + 2, top, right - 2, bottom, color);
         context.fill(left, top + 2, right, bottom - 2, color);
@@ -320,12 +300,6 @@ final class WaypointSettingsScreen extends Screen {
         if (session.dirty) session.baseline.restore(WaypointsPlusClient.config().settings());
         client.setScreen(parent);
     }
-
-    static void drawPanel(DrawContext context, int left, int top, int right, int bottom) {
-        roundedFill(context, left, top, right, bottom, 0xE0141824);
-        gradientOutline(context, left, top, right, bottom);
-    }
-
     private static final class Session {
         private WaypointSettingsSnapshot baseline =
                 WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());

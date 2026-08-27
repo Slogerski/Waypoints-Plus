@@ -105,8 +105,7 @@ abstract class WaypointFormScreen extends Screen {
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         renderBackground(context);
-        roundedFill(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);
-        outline(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
+        GuiPalette.panel(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
         drawField(context, panelLeft + 10, panelTop + 46, 280, 20);
         drawField(context, panelLeft + 10, panelTop + 88, 88, 20);
         drawField(context, panelLeft + 106, panelTop + 88, 88, 20);
@@ -134,29 +133,12 @@ abstract class WaypointFormScreen extends Screen {
     }
 
     private void drawField(DrawContext context, int x, int y, int width, int height) {
-        roundedFill(context, x, y, x + width, y + height, 0xA0000000);
-        outline(context, x, y, x + width, y + height, borderColor());
+        GuiPalette.input(context, x, y, width, height, borderColor());
     }
 
     private int borderColor() {
         try { return 0xFF000000 | (int)Long.parseLong(selectedColor.replace("#", "").substring(2), 16); }
         catch (RuntimeException ignored) { return 0xFF00F5FF; }
-    }
-
-    private static void roundedFill(DrawContext context, int left, int top, int right, int bottom, int color) {
-        context.fill(left + 2, top, right - 2, bottom, color);
-        context.fill(left, top + 2, right, bottom - 2, color);
-    }
-
-    private static void outline(DrawContext context, int left, int top, int right, int bottom, int color) {
-        context.fill(left + 2, top, right - 2, top + 1, color);
-        context.fill(left + 2, bottom - 1, right - 2, bottom, color);
-        context.fill(left, top + 2, left + 1, bottom - 2, color);
-        context.fill(right - 1, top + 2, right, bottom - 2, color);
-        context.fill(left + 1, top + 1, left + 2, top + 2, color);
-        context.fill(right - 2, top + 1, right - 1, top + 2, color);
-        context.fill(left + 1, bottom - 2, left + 2, bottom - 1, color);
-        context.fill(right - 2, bottom - 2, right - 1, bottom - 1, color);
     }
 
     @Override public void close() { client.setScreen(parent); }

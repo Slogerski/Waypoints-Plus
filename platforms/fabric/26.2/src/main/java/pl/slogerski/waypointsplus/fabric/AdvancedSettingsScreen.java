@@ -7,8 +7,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 final class AdvancedSettingsScreen extends Screen {
-    private static final int MAGENTA = 0xFFD946EF;
-    private static final int FIELD_ACCENT = MAGENTA;
+    private static final int FIELD_ACCENT = 0xFFD946EF;
     private final WaypointSettingsScreen settingsScreen;
     private Button saveButton;
     private EditBox scale;
@@ -208,31 +207,22 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        WaypointSettingsScreen.drawPanel(graphics, left, top, left + 316, top + 256);
-        advancedFieldBox(graphics, left + 224, top + 74, 82, 20);
-        advancedFieldBox(graphics, left + 224, top + 104, 82, 20);
-        advancedFieldBox(graphics, left + 224, top + 134, 82, 20);
-        advancedFieldBox(graphics, left + 224, top + 164, 82, 20);
+        GuiPalette.panel(graphics, left, top, left + 316, top + 256);
+        GuiPalette.input(graphics, left + 224, top + 74, 82, 20);
+        GuiPalette.input(graphics, left + 224, top + 104, 82, 20);
+        GuiPalette.input(graphics, left + 224, top + 134, 82, 20);
+        GuiPalette.input(graphics, left + 224, top + 164, 82, 20);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        graphics.centeredText(font, title, width / 2, top + 8, MAGENTA);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(width / 2.0f, top + 7.0f);
+        graphics.pose().scale(1.2f, 1.2f);
+        graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
+        graphics.pose().popMatrix();
         graphics.text(font, UiText.get("Scale", "Skala"), left + 12, top + 80, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Default Marker", "Domyślny znacznik"), left + 12, top + 110, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Default Background", "Domyślne tło"), left + 12, top + 140, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
                 left + 12, top + 170, 0xFFD9E2F0, true);
-    }
-
-    private static void advancedFieldBox(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
-        graphics.fill(x + 1, y, x + width - 1, y + height, 0xA0000000);
-        graphics.fill(x, y + 1, x + width, y + height - 1, 0xA0000000);
-        graphics.fill(x + 2, y, x + width - 2, y + 1, FIELD_ACCENT);
-        graphics.fill(x + 2, y + height - 1, x + width - 2, y + height, FIELD_ACCENT);
-        graphics.fill(x, y + 2, x + 1, y + height - 2, FIELD_ACCENT);
-        graphics.fill(x + width - 1, y + 2, x + width, y + height - 2, FIELD_ACCENT);
-        graphics.fill(x + 1, y + 1, x + 2, y + 2, FIELD_ACCENT);
-        graphics.fill(x + width - 2, y + 1, x + width - 1, y + 2, FIELD_ACCENT);
-        graphics.fill(x + 1, y + height - 2, x + 2, y + height - 1, FIELD_ACCENT);
-        graphics.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, FIELD_ACCENT);
     }
 
     @Override public void onClose() {

@@ -8,7 +8,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 final class ProfileNameScreen extends Screen {
-    private static final int ACCENT = 0xFFC43D9D;
     private final Screen exitScreen;
     private final Screen settingsParent;
     private final String originalName;
@@ -66,30 +65,16 @@ final class ProfileNameScreen extends Screen {
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        roundedFill(graphics, left, top, left + 280, top + 122, 0xE0141824);
-        outline(graphics, left, top, left + 280, top + 122);
-        roundedFill(graphics, left + 10, top + 43, left + 270, top + 67, 0xA0000000);
-        outline(graphics, left + 10, top + 43, left + 270, top + 67);
+        GuiPalette.panel(graphics, left, top, left + 280, top + 122);
+        GuiPalette.input(graphics, left + 10, top + 43, 260, 24);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        graphics.centeredText(font, title, width / 2, top + 13, ACCENT);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(width / 2.0f, top + 12.0f);
+        graphics.pose().scale(1.2f, 1.2f);
+        graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
+        graphics.pose().popMatrix();
         graphics.text(font, UiText.get("Profile Name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0, true);
         if (!error.isEmpty()) graphics.centeredText(font, Component.literal(error), width / 2, top + 108, 0xFFFF657A);
-    }
-
-    private static void roundedFill(GuiGraphicsExtractor graphics, int l, int t, int r, int b, int color) {
-        graphics.fill(l + 2, t, r - 2, b, color);
-        graphics.fill(l, t + 2, r, b - 2, color);
-    }
-
-    private static void outline(GuiGraphicsExtractor graphics, int l, int t, int r, int b) {
-        graphics.fill(l + 2, t, r - 2, t + 1, ACCENT);
-        graphics.fill(l + 2, b - 1, r - 2, b, ACCENT);
-        graphics.fill(l, t + 2, l + 1, b - 2, ACCENT);
-        graphics.fill(r - 1, t + 2, r, b - 2, ACCENT);
-        graphics.fill(l + 1, t + 1, l + 2, t + 2, ACCENT);
-        graphics.fill(r - 2, t + 1, r - 1, t + 2, ACCENT);
-        graphics.fill(l + 1, b - 2, l + 2, b - 1, ACCENT);
-        graphics.fill(r - 2, b - 2, r - 1, b - 1, ACCENT);
     }
 
     @Override public void onClose() { Minecraft.getInstance().setScreen(exitScreen); }

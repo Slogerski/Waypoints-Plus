@@ -7,7 +7,6 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 final class ProfileNameScreen extends Screen {
-    private static final int ACCENT = 0xFFC43D9D;
     private final Screen exitScreen;
     private final Screen settingsParent;
     private final String originalName;
@@ -64,30 +63,16 @@ final class ProfileNameScreen extends Screen {
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         renderBackground(context);
-        roundedFill(context, left, top, left + 280, top + 122, 0xE0141824);
-        outline(context, left, top, left + 280, top + 122);
-        roundedFill(context, left + 10, top + 43, left + 270, top + 67, 0xA0000000);
-        outline(context, left + 10, top + 43, left + 270, top + 67);
+        GuiPalette.panel(context, left, top, left + 280, top + 122);
+        GuiPalette.input(context, left + 10, top + 43, 260, 24);
         super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 13, ACCENT);
+        context.getMatrices().push();
+        context.getMatrices().translate(width / 2.0f, top + 12.0f, 0.0f);
+        context.getMatrices().scale(1.2f, 1.2f, 1.0f);
+        context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
+        context.getMatrices().pop();
         context.drawTextWithShadow(textRenderer, UiText.get("Profile Name", "Nazwa profilu"), left + 10, top + 31, 0xFFD9E2F0);
         if (!error.isEmpty()) context.drawCenteredTextWithShadow(textRenderer, Text.literal(error), width / 2, top + 108, 0xFFFF657A);
-    }
-
-    private static void roundedFill(DrawContext context, int l, int t, int r, int b, int color) {
-        context.fill(l + 2, t, r - 2, b, color);
-        context.fill(l, t + 2, r, b - 2, color);
-    }
-
-    private static void outline(DrawContext context, int l, int t, int r, int b) {
-        context.fill(l + 2, t, r - 2, t + 1, ACCENT);
-        context.fill(l + 2, b - 1, r - 2, b, ACCENT);
-        context.fill(l, t + 2, l + 1, b - 2, ACCENT);
-        context.fill(r - 1, t + 2, r, b - 2, ACCENT);
-        context.fill(l + 1, t + 1, l + 2, t + 2, ACCENT);
-        context.fill(r - 2, t + 1, r - 1, t + 2, ACCENT);
-        context.fill(l + 1, b - 2, l + 2, b - 1, ACCENT);
-        context.fill(r - 2, b - 2, r - 1, b - 1, ACCENT);
     }
 
     @Override public void close() { client.setScreen(exitScreen); }

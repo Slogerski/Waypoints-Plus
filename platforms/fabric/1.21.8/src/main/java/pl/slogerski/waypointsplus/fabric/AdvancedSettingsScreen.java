@@ -7,8 +7,6 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 final class AdvancedSettingsScreen extends Screen {
-    private static final int MAGENTA = 0xFFD946EF;
-    private static final int FIELD_ACCENT = MAGENTA;
     private final WaypointSettingsScreen settingsScreen;
     private ButtonWidget saveButton;
     private TextFieldWidget scale;
@@ -197,31 +195,18 @@ final class AdvancedSettingsScreen extends Screen {
                 WaypointsPlusClient.config().settings().menuBackground)) {
             super.renderBackground(context, mouseX, mouseY, delta);
         }
-        WaypointSettingsScreen.drawPanel(context, left, top, left + 316, top + 256);
-        advancedFieldBox(context, left + 224, top + 74, 82, 20);
-        advancedFieldBox(context, left + 224, top + 104, 82, 20);
-        advancedFieldBox(context, left + 224, top + 134, 82, 20);
-        advancedFieldBox(context, left + 224, top + 164, 82, 20);
+        GuiPalette.panel(context, left, top, left + 316, top + 256);
+        GuiPalette.input(context, left + 224, top + 74, 82, 20);
+        GuiPalette.input(context, left + 224, top + 104, 82, 20);
+        GuiPalette.input(context, left + 224, top + 134, 82, 20);
+        GuiPalette.input(context, left + 224, top + 164, 82, 20);
         super.render(context, mouseX, mouseY, delta);
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 8, MAGENTA);
+        WaypointSettingsScreen.drawLargeTitle(context, textRenderer, title, width / 2.0f, top + 7.0f);
         context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, top + 80, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Default Marker", "Domyślny znacznik"), left + 12, top + 110, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, top + 140, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
                 left + 12, top + 170, 0xFFD9E2F0);
-    }
-
-    private static void advancedFieldBox(DrawContext context, int x, int y, int width, int height) {
-        context.fill(x + 1, y, x + width - 1, y + height, 0xA0000000);
-        context.fill(x, y + 1, x + width, y + height - 1, 0xA0000000);
-        context.fill(x + 2, y, x + width - 2, y + 1, FIELD_ACCENT);
-        context.fill(x + 2, y + height - 1, x + width - 2, y + height, FIELD_ACCENT);
-        context.fill(x, y + 2, x + 1, y + height - 2, FIELD_ACCENT);
-        context.fill(x + width - 1, y + 2, x + width, y + height - 2, FIELD_ACCENT);
-        context.fill(x + 1, y + 1, x + 2, y + 2, FIELD_ACCENT);
-        context.fill(x + width - 2, y + 1, x + width - 1, y + 2, FIELD_ACCENT);
-        context.fill(x + 1, y + height - 2, x + 2, y + height - 1, FIELD_ACCENT);
-        context.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, FIELD_ACCENT);
     }
 
     @Override public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {

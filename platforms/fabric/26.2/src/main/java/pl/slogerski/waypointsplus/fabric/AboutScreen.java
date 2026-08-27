@@ -20,8 +20,6 @@ import pl.slogerski.waypointsplus.fabric.remote.RemoteLinks;
 import java.util.Optional;
 
 final class AboutScreen extends Screen {
-    private static final int PURPLE = 0xFF7C3AED, RED = 0xFFFF405D;
-    private static final int AD_BORDER = 0x82A78BFA;
     private static final Identifier AVATAR =
             Identifier.fromNamespaceAndPath("waypointsplus", "textures/gui/avatar.png");
     private final Screen parent;
@@ -156,8 +154,7 @@ final class AboutScreen extends Screen {
     @Override
     public void extractRenderState(
             GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        roundedFill(graphics, left, top, left + 300, top + 238, 0xE0141824);
-        gradientOutline(graphics, left, top, left + 300, top + 238);
+        GuiPalette.panel(graphics, left, top, left + 300, top + 238);
         graphics.blit(
                 RenderPipelines.GUI_TEXTURED,
                 AVATAR,
@@ -173,7 +170,11 @@ final class AboutScreen extends Screen {
                 475);
         renderAd(graphics);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        graphics.centeredText(font, title, width / 2, top + 13, 0xFFD946EF);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(width / 2.0f, top + 12.0f);
+        graphics.pose().scale(1.2f, 1.2f);
+        graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
+        graphics.pose().popMatrix();
         graphics.text(
                 font,
                 UiText.get("Author: Slogerski", "Autor: Slogerski"),
@@ -193,10 +194,7 @@ final class AboutScreen extends Screen {
     private void renderAd(GuiGraphicsExtractor graphics) {
         int x = left + 10, y = top + 134, w = 280, h = 64;
         graphics.fill(x, y, x + w, y + h, 0xA0090D16);
-        graphics.fill(x, y, x + w, y + 1, AD_BORDER);
-        graphics.fill(x, y + h - 1, x + w, y + h, AD_BORDER);
-        graphics.fill(x, y, x + 1, y + h, AD_BORDER);
-        graphics.fill(x + w - 1, y, x + w, y + h, AD_BORDER);
+        GuiPalette.inputOutline(graphics, x, y, x + w, y + h);
         if (adTexture != null && adTexture.identifier() != null) {
             int drawW = w - 2, drawH = h - 2;
             if (adTexture.width() * drawH > adTexture.height() * drawW)
@@ -262,40 +260,6 @@ final class AboutScreen extends Screen {
 
     private static void open(String url) {
         Util.getPlatform().openUri(url);
-    }
-
-    private static void roundedFill(GuiGraphicsExtractor g, int l, int t, int r, int b, int color) {
-        g.fill(l + 2, t, r - 2, b, color);
-        g.fill(l, t + 2, r, b - 2, color);
-    }
-
-    private static void gradientOutline(GuiGraphicsExtractor g, int l, int t, int r, int b) {
-        for (int i = 0; i < 24; i++) {
-            int x1 = l + 2 + (r - l - 4) * i / 24;
-            int x2 = l + 2 + (r - l - 4) * (i + 1) / 24;
-            int color = mix(PURPLE, RED, i / 23.0f);
-            g.fill(x1, t, x2, t + 1, color);
-            g.fill(x1, b - 1, x2, b, color);
-        }
-        g.fill(l, t + 2, l + 1, b - 2, PURPLE);
-        g.fill(r - 1, t + 2, r, b - 2, RED);
-        g.fill(l + 1, t + 1, l + 2, t + 2, PURPLE);
-        g.fill(r - 2, t + 1, r - 1, t + 2, RED);
-        g.fill(l + 1, b - 2, l + 2, b - 1, PURPLE);
-        g.fill(r - 2, b - 2, r - 1, b - 1, RED);
-    }
-
-    private static int mix(int a, int b, float t) {
-        int ar = (a >> 16) & 255;
-        int ag = (a >> 8) & 255;
-        int ab = a & 255;
-        int br = (b >> 16) & 255;
-        int bg = (b >> 8) & 255;
-        int bb = b & 255;
-        return 0xFF000000
-                | ((int) (ar + (br - ar) * t) << 16)
-                | ((int) (ag + (bg - ag) * t) << 8)
-                | (int) (ab + (bb - ab) * t);
     }
 
     @Override

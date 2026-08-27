@@ -107,8 +107,7 @@ abstract class WaypointFormScreen extends Screen {
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        roundedFill(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, 0xE0141824);
-        outline(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
+        GuiPalette.panel(graphics, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
         drawField(graphics, panelLeft + 10, panelTop + 46, 280, 20);
         drawField(graphics, panelLeft + 10, panelTop + 88, 88, 20);
         drawField(graphics, panelLeft + 106, panelTop + 88, 88, 20);
@@ -136,29 +135,12 @@ abstract class WaypointFormScreen extends Screen {
     }
 
     private void drawField(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
-        roundedFill(graphics, x, y, x + width, y + height, 0xA0000000);
-        outline(graphics, x, y, x + width, y + height, borderColor());
+        GuiPalette.input(graphics, x, y, width, height, borderColor());
     }
 
     private int borderColor() {
         try { return 0xFF000000 | (int)Long.parseLong(selectedColor.replace("#", "").substring(2), 16); }
         catch (RuntimeException ignored) { return 0xFF00F5FF; }
-    }
-
-    private static void roundedFill(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int color) {
-        graphics.fill(left + 2, top, right - 2, bottom, color);
-        graphics.fill(left, top + 2, right, bottom - 2, color);
-    }
-
-    private static void outline(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int color) {
-        graphics.fill(left + 2, top, right - 2, top + 1, color);
-        graphics.fill(left + 2, bottom - 1, right - 2, bottom, color);
-        graphics.fill(left, top + 2, left + 1, bottom - 2, color);
-        graphics.fill(right - 1, top + 2, right, bottom - 2, color);
-        graphics.fill(left + 1, top + 1, left + 2, top + 2, color);
-        graphics.fill(right - 2, top + 1, right - 1, top + 2, color);
-        graphics.fill(left + 1, bottom - 2, left + 2, bottom - 1, color);
-        graphics.fill(right - 2, bottom - 2, right - 1, bottom - 1, color);
     }
 
     @Override public void onClose() { Minecraft.getInstance().setScreen(parent); }

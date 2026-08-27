@@ -19,8 +19,6 @@ import pl.slogerski.waypointsplus.fabric.remote.RemoteLinks;
 import java.util.Optional;
 
 final class AboutScreen extends Screen {
-    private static final int PURPLE = 0xFF7C3AED, RED = 0xFFFF405D;
-    private static final int AD_BORDER = 0x82A78BFA;
     private static final Identifier AVATAR =
             Identifier.of("waypointsplus", "textures/gui/avatar.png");
     private final Screen parent;
@@ -135,8 +133,7 @@ final class AboutScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        roundedFill(context, left, top, left + 300, top + 238, 0xE0141824);
-        gradientOutline(context, left, top, left + 300, top + 238);
+        GuiPalette.panel(context, left, top, left + 300, top + 238);
         context.drawTexture(
                 RenderPipelines.GUI_TEXTURED,
                 AVATAR,
@@ -151,7 +148,11 @@ final class AboutScreen extends Screen {
                 355,
                 475);
         renderAd(context);
-        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 13, 0xFFD946EF);
+        context.getMatrices().pushMatrix();
+        context.getMatrices().translate(width / 2.0f, top + 12.0f);
+        context.getMatrices().scale(1.2f, 1.2f);
+        context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
+        context.getMatrices().popMatrix();
         context.drawTextWithShadow(
                 textRenderer,
                 UiText.get("Author: Slogerski", "Autor: Slogerski"),
@@ -170,10 +171,7 @@ final class AboutScreen extends Screen {
     private void renderAd(DrawContext context) {
         int x = left + 10, y = top + 134, w = 280, h = 64;
         context.fill(x, y, x + w, y + h, 0xA0090D16);
-        context.fill(x, y, x + w, y + 1, AD_BORDER);
-        context.fill(x, y + h - 1, x + w, y + h, AD_BORDER);
-        context.fill(x, y, x + 1, y + h, AD_BORDER);
-        context.fill(x + w - 1, y, x + w, y + h, AD_BORDER);
+        GuiPalette.inputOutline(context, x, y, x + w, y + h);
         if (adTexture != null && adTexture.identifier() != null) {
             int availableW = w - 2;
             int availableH = h - 2;
@@ -242,40 +240,6 @@ final class AboutScreen extends Screen {
 
     private static void open(String url) {
         Util.getOperatingSystem().open(url);
-    }
-
-    private static void roundedFill(DrawContext c, int l, int t, int r, int b, int color) {
-        c.fill(l + 2, t, r - 2, b, color);
-        c.fill(l, t + 2, r, b - 2, color);
-    }
-
-    private static void gradientOutline(DrawContext c, int l, int t, int r, int b) {
-        for (int i = 0; i < 24; i++) {
-            int x1 = l + 2 + (r - l - 4) * i / 24;
-            int x2 = l + 2 + (r - l - 4) * (i + 1) / 24;
-            int color = mix(PURPLE, RED, i / 23.0f);
-            c.fill(x1, t, x2, t + 1, color);
-            c.fill(x1, b - 1, x2, b, color);
-        }
-        c.fill(l, t + 2, l + 1, b - 2, PURPLE);
-        c.fill(r - 1, t + 2, r, b - 2, RED);
-        c.fill(l + 1, t + 1, l + 2, t + 2, PURPLE);
-        c.fill(r - 2, t + 1, r - 1, t + 2, RED);
-        c.fill(l + 1, b - 2, l + 2, b - 1, PURPLE);
-        c.fill(r - 2, b - 2, r - 1, b - 1, RED);
-    }
-
-    private static int mix(int a, int b, float t) {
-        int ar = (a >> 16) & 255;
-        int ag = (a >> 8) & 255;
-        int ab = a & 255;
-        int br = (b >> 16) & 255;
-        int bg = (b >> 8) & 255;
-        int bb = b & 255;
-        return 0xFF000000
-                | ((int) (ar + (br - ar) * t) << 16)
-                | ((int) (ag + (bg - ag) * t) << 8)
-                | (int) (ab + (bb - ab) * t);
     }
 
     @Override
