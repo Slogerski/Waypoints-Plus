@@ -9,12 +9,12 @@ final class EditWaypointScreen extends WaypointFormScreen {
 
     EditWaypointScreen(Screen parent, Waypoint waypoint) {
         super(parent, Component.literal(UiText.get("Edit Waypoint", "Edytuj waypoint")), waypoint.name(),
-                waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb());
+                waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb(), waypoint.dimension());
         this.waypoint = waypoint;
     }
 
-    @Override protected void persist(String name, int x, int y, int z, String color) {
+    @Override protected void persist(String name, int x, int y, int z, String color, String dimension) {
         WaypointsPlusClient.config().updateWaypoint(new Waypoint(waypoint.id(), name, waypoint.serverKey(),
-                waypoint.profile(), waypoint.dimension(), x, y, z, color));
+                waypoint.profile(), dimension, x, y, z, color));
     }
 }

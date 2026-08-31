@@ -14,11 +14,13 @@ abstract class WaypointFormScreen extends Screen {
     private final Screen parent;
     private String pendingName, pendingX, pendingY, pendingZ;
     protected String selectedColor;
+    protected String selectedDimension;
     private TextFieldWidget name, xField, yField, zField;
     private int panelLeft, panelTop;
     private String error = "";
 
-    WaypointFormScreen(Screen parent, Text title, String name, int x, int y, int z, String color) {
+    WaypointFormScreen(Screen parent, Text title, String name, int x, int y, int z, String color,
+                       String dimension) {
         super(title);
         this.parent = parent;
         this.pendingName = name;
@@ -26,6 +28,7 @@ abstract class WaypointFormScreen extends Screen {
         this.pendingY = String.valueOf(y);
         this.pendingZ = String.valueOf(z);
         this.selectedColor = color;
+        this.selectedDimension = dimension;
     }
 
     @Override protected void init() {
@@ -40,10 +43,13 @@ abstract class WaypointFormScreen extends Screen {
 
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Paste", "Wklej")), b -> pasteCoordinates())
                 .dimensions(panelLeft + 10, panelTop + 120, 94, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Choose Color", "Wybierz kolor"))
+        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Settings", "Ustawienia"))
                 .styled(style -> style.withColor(borderColor())), b -> {
             snapshot();
-            client.setScreen(new ColorPickerScreen(this, selectedColor, value -> selectedColor = value));
+            client.setScreen(new ColorPickerScreen(this, selectedColor, selectedDimension, (color, dimension) -> {
+                selectedColor = color;
+                selectedDimension = dimension;
+            }));
         }).dimensions(panelLeft + 112, panelTop + 120, 178, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Save", "Zapisz")), b -> save())
                 .dimensions(panelLeft + 10, panelTop + 158, 136, 20).build());
@@ -89,23 +95,27 @@ abstract class WaypointFormScreen extends Screen {
             String waypointName = name.getText().trim();
             if (waypointName.isEmpty()) throw new IllegalArgumentException();
             persist(waypointName, Integer.parseInt(xField.getText()), Integer.parseInt(yField.getText()),
-                    Integer.parseInt(zField.getText()), selectedColor);
+                    Integer.parseInt(zField.getText()), selectedColor, selectedDimension);
+            WaypointsPlusClient.config().settings().rememberWaypointColor(selectedColor);
+            WaypointsPlusClient.config().saveSettings();
             close();
         } catch (RuntimeException ignored) {
             error = UiText.get("Check the name and coordinates.", "Sprawdź nazwę i koordynaty.");
         }
     }
 
-    protected abstract void persist(String name, int x, int y, int z, String color);
+    protected abstract void persist(String name, int x, int y, int z, String color, String dimension);
 
     @Override public void renderBackground(DrawContext context) {
-        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
-                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(context);
     }
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context);
-        GuiPalette.panel(context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(context);
+        }
+        GuiPalette.panel(
+                context, panelLeft, panelTop, panelLeft + 300, panelTop + 196, borderColor());
         drawField(context, panelLeft + 10, panelTop + 46, 280, 20);
         drawField(context, panelLeft + 10, panelTop + 88, 88, 20);
         drawField(context, panelLeft + 106, panelTop + 88, 88, 20);

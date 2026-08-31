@@ -9,7 +9,7 @@ final class CreateWaypointScreen extends WaypointFormScreen {
     CreateWaypointScreen(Screen parent) {
         super(parent, Component.literal(UiText.get("Create Waypoint", "Utwórz waypoint")), "",
                 currentPos().getX(), currentPos().getY(), currentPos().getZ(),
-                String.format("%08X", WaypointsPlusClient.config().settings().markerArgb));
+                String.format("%08X", WaypointsPlusClient.config().settings().markerArgb), currentDimension());
     }
 
     private static BlockPos currentPos() {
@@ -17,10 +17,14 @@ final class CreateWaypointScreen extends WaypointFormScreen {
         return minecraft.player == null ? BlockPos.ZERO : minecraft.player.blockPosition();
     }
 
-    @Override protected void persist(String name, int x, int y, int z, String color) {
+    private static String currentDimension() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.level == null ? "minecraft:overworld" : minecraft.level.dimension().identifier().toString();
+    }
+
+    @Override protected void persist(String name, int x, int y, int z, String color, String dimension) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) throw new IllegalStateException();
-        WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(),
-                minecraft.level.dimension().identifier().toString(), x, y, z, color);
+        WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(), dimension, x, y, z, color);
     }
 }

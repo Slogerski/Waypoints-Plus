@@ -15,11 +15,13 @@ abstract class WaypointFormScreen extends Screen {
     private final Screen parent;
     private String pendingName, pendingX, pendingY, pendingZ;
     protected String selectedColor;
+    protected String selectedDimension;
     private EditBox name, xField, yField, zField;
     private int panelLeft, panelTop;
     private String error = "";
 
-    WaypointFormScreen(Screen parent, Component title, String name, int x, int y, int z, String color) {
+    WaypointFormScreen(Screen parent, Component title, String name, int x, int y, int z, String color,
+                       String dimension) {
         super(title);
         this.parent = parent;
         this.pendingName = name;
@@ -27,6 +29,7 @@ abstract class WaypointFormScreen extends Screen {
         this.pendingY = String.valueOf(y);
         this.pendingZ = String.valueOf(z);
         this.selectedColor = color;
+        this.selectedDimension = dimension;
     }
 
     @Override protected void init() {
@@ -41,10 +44,13 @@ abstract class WaypointFormScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Paste", "Wklej")), b -> pasteCoordinates())
                 .pos(panelLeft + 10, panelTop + 120).size(94, 20).build());
-        addRenderableWidget(Button.builder(Component.literal(UiText.get("Choose Color", "Wybierz kolor"))
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Settings", "Ustawienia"))
                 .withColor(borderColor()), b -> {
             snapshot();
-            minecraft.setScreen(new ColorPickerScreen(this, selectedColor, value -> selectedColor = value));
+            minecraft.setScreen(new ColorPickerScreen(this, selectedColor, selectedDimension, (color, selectedDimension) -> {
+                selectedColor = color;
+                this.selectedDimension = selectedDimension;
+            }));
         }).pos(panelLeft + 112, panelTop + 120).size(178, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Save", "Zapisz")), b -> save())
                 .pos(panelLeft + 10, panelTop + 158).size(136, 20).build());
@@ -90,14 +96,16 @@ abstract class WaypointFormScreen extends Screen {
             String waypointName = name.getValue().trim();
             if (waypointName.isEmpty()) throw new IllegalArgumentException();
             persist(waypointName, Integer.parseInt(xField.getValue()), Integer.parseInt(yField.getValue()),
-                    Integer.parseInt(zField.getValue()), selectedColor);
+                    Integer.parseInt(zField.getValue()), selectedColor, selectedDimension);
+            WaypointsPlusClient.config().settings().rememberWaypointColor(selectedColor);
+            WaypointsPlusClient.config().saveSettings();
             onClose();
         } catch (RuntimeException ignored) {
             error = UiText.get("Check the name and coordinates.", "Sprawdź nazwę i koordynaty.");
         }
     }
 
-    protected abstract void persist(String name, int x, int y, int z, String color);
+    protected abstract void persist(String name, int x, int y, int z, String color, String dimension);
 
     @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,

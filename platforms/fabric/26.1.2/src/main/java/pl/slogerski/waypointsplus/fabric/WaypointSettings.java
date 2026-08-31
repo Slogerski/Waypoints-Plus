@@ -1,5 +1,9 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 final class WaypointSettings {
     int schemaVersion = 1;
     boolean enabled = true;
@@ -15,6 +19,7 @@ final class WaypointSettings {
     int markerArgb = 0xCCDBDBD3;
     int backgroundArgb = 0xE01C1C1C;
     int markerTintPercent = 25;
+    List<String> waypointColorHistory = new ArrayList<>();
 
     void resetDefaults() {
         schemaVersion = 1;
@@ -37,5 +42,23 @@ final class WaypointSettings {
         scale = Math.max(0.25f, Math.min(4.0f, scale));
         markerTintPercent = Math.max(0, Math.min(100, markerTintPercent));
         if (!"pl".equals(language)) language = "en";
+        if (waypointColorHistory == null) waypointColorHistory = new ArrayList<>();
+        List<String> sanitizedColors = new ArrayList<>();
+        for (String color : waypointColorHistory) {
+            if (color == null) continue;
+            String normalized = color.replace("#", "").toUpperCase(Locale.ROOT);
+            if (!normalized.matches("[0-9A-F]{8}") || sanitizedColors.contains(normalized)) continue;
+            sanitizedColors.add(normalized);
+            if (sanitizedColors.size() == 8) break;
+        }
+        waypointColorHistory = sanitizedColors;
+    }
+
+    void rememberWaypointColor(String color) {
+        String normalized = color.replace("#", "").toUpperCase(Locale.ROOT);
+        if (!normalized.matches("[0-9A-F]{8}")) return;
+        waypointColorHistory.removeIf(normalized::equalsIgnoreCase);
+        waypointColorHistory.add(0, normalized);
+        if (waypointColorHistory.size() > 8) waypointColorHistory = new ArrayList<>(waypointColorHistory.subList(0, 8));
     }
 }
