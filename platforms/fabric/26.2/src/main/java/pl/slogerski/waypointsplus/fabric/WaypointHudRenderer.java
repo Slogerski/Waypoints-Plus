@@ -115,6 +115,7 @@ final class WaypointHudRenderer {
         int background = settings.background
                 ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
                 : 0;
+        int textColor = settings.matchTextToBorder ? color : settings.textArgb;
 
         pose.pushPose();
         pose.translate(dx, dy, dz);
@@ -124,26 +125,26 @@ final class WaypointHudRenderer {
         OrderedSubmitNodeCollector panelSubmits = submits.order(0);
         OrderedSubmitNodeCollector textSubmits = submits.order(1);
         if (renderMode == RenderMode.DIRECT) {
-            submitDirectLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color);
+            submitDirectLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color, textColor);
         } else {
-            submitPhasedLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color);
+            submitPhasedLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color, textColor);
         }
         pose.popPose();
     }
 
     private static void submitDirectLabel(PoseStack pose, OrderedSubmitNodeCollector panels,
                                           OrderedSubmitNodeCollector texts, Component text, float x,
-                                          int textWidth, int background, int color) {
+                                          int textWidth, int background, int color, int textColor) {
         panels.submitCustomGeometry(pose, RenderTypes.textBackgroundSeeThrough(),
                 (entry, vertices) -> drawRoundedPanel(vertices, entry.pose(), x - 3.0f, -7.0f,
                         x + textWidth + 3.0f, 8.0f, background, color));
         texts.submitText(pose, x, -3.0f, text.getVisualOrderText(), false,
-                Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, color, 0, 0);
+                Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, textColor, 0, 0);
     }
 
     private static void submitPhasedLabel(PoseStack pose, OrderedSubmitNodeCollector panels,
                                           OrderedSubmitNodeCollector texts, Component text, float x,
-                                          int textWidth, int background, int color) {
+                                          int textWidth, int background, int color, int textColor) {
         panels.submitCustom(LABEL_OVERLAY, new CustomFeatureRenderer.Submit(
                 pose.last().copy(),
                 RenderTypes.textBackgroundSeeThrough(),
@@ -158,7 +159,7 @@ final class WaypointHudRenderer {
                 false,
                 Font.DisplayMode.SEE_THROUGH,
                 FULL_BRIGHT,
-                color,
+                textColor,
                 0,
                 0
         ));

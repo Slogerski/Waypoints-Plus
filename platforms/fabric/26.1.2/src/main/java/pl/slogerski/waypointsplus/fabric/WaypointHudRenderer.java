@@ -109,10 +109,11 @@ final class WaypointHudRenderer {
         int textWidth = minecraft.font.width(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
+        int textColor = settings.matchTextToBorder ? color : settings.textArgb;
         int background = settings.background
                 ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
                 : 0;
-        return new PreparedLabel(dx, dy, dz, scale, text, x, textWidth, color, background);
+        return new PreparedLabel(dx, dy, dz, scale, text, x, textWidth, color, textColor, background);
     }
 
     private static void renderLabels(LevelRenderContext context) {
@@ -139,7 +140,7 @@ final class WaypointHudRenderer {
             pose.translate(label.dx, label.dy, label.dz);
             pose.mulPose(frame.cameraRotation);
             pose.scale(label.scale, -label.scale, label.scale);
-            minecraft.font.drawInBatch(label.text.getVisualOrderText(), label.x, -3.0f, label.color, false,
+            minecraft.font.drawInBatch(label.text.getVisualOrderText(), label.x, -3.0f, label.textColor, false,
                     pose.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH, 0, FULL_BRIGHT);
             pose.popPose();
         }
@@ -261,7 +262,7 @@ final class WaypointHudRenderer {
     private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
 
     private record PreparedLabel(double dx, double dy, double dz, float scale, Component text,
-                                 float x, int textWidth, int color, int background) { }
+                                 float x, int textWidth, int color, int textColor, int background) { }
 
     private record PreparedLaser(DisplayTarget target, int color) { }
 

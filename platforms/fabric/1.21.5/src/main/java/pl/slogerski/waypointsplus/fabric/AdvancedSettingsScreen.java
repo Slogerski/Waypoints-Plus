@@ -11,7 +11,7 @@ final class AdvancedSettingsScreen extends Screen {
     private final WaypointSettingsScreen settingsScreen;
     private ButtonWidget saveButton;
     private TextFieldWidget scale;
-    private TextFieldWidget markerColor;
+    private TextFieldWidget textColor;
     private TextFieldWidget backgroundColor;
     private TextFieldWidget markerTint;
     private int left;
@@ -38,9 +38,9 @@ final class AdvancedSettingsScreen extends Screen {
         scale = field(left + 224, top + 74, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setChangedListener(value -> applyScale());
-        markerColor = field(left + 224, top + 104, 82, String.format("%08X", settings.markerArgb), "Marker");
-        markerColor.setMaxLength(9);
-        markerColor.setChangedListener(value -> applyArgb(value, true));
+        textColor = field(left + 224, top + 104, 82, String.format("%08X", settings.textArgb), "Text");
+        textColor.setMaxLength(9);
+        textColor.setChangedListener(value -> applyArgb(value, true));
         backgroundColor = field(left + 224, top + 134, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setChangedListener(value -> applyArgb(value, false));
@@ -58,14 +58,19 @@ final class AdvancedSettingsScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(false))
                 .dimensions(left + 154, top + 134, 64, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal(
+                        UiText.get("Match Text To Border", "Dopasuj tekst do obramowania")
+                                + ": " + (settings.matchTextToBorder ? "ON" : "OFF")),
+                button -> toggleTextBorderMatch())
+                .dimensions(left + 10, top + 200, 296, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
-                .dimensions(left + 10, top + 200, 296, 20).build());
+                .dimensions(left + 94, top + 224, 132, 20).build());
         saveButton = addDrawableChild(ButtonWidget.builder(saveLabel(), button -> save())
-                .dimensions(left + 10, top + 224, 144, 20).build());
+                .dimensions(left + 10, top + 224, 78, 20).build());
         saveButton.active = settingsScreen.hasUnsavedChanges();
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")), button -> close())
-                .dimensions(left + 162, top + 224, 144, 20).build());
+                .dimensions(left + 232, top + 224, 74, 20).build());
     }
 
     private void save() {
@@ -99,14 +104,14 @@ final class AdvancedSettingsScreen extends Screen {
         } catch (NumberFormatException ignored) { }
     }
 
-    private void applyArgb(String value, boolean marker) {
+    private void applyArgb(String value, boolean text) {
         String hex = value.replace("#", "");
         if (hex.length() != 8) return;
         try {
             int color = (int)Long.parseLong(hex, 16);
             WaypointSettings settings = WaypointsPlusClient.config().settings();
-            if ((marker ? settings.markerArgb : settings.backgroundArgb) != color) {
-                if (marker) settings.markerArgb = color;
+            if ((text ? settings.textArgb : settings.backgroundArgb) != color) {
+                if (text) settings.textArgb = color;
                 else settings.backgroundArgb = color;
                 markDirty();
             }
@@ -159,24 +164,31 @@ final class AdvancedSettingsScreen extends Screen {
         client.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }
 
-    private void openColorPicker(boolean marker) {
+    private void toggleTextBorderMatch() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
-        int color = marker ? settings.markerArgb : settings.backgroundArgb;
+        settings.matchTextToBorder = !settings.matchTextToBorder;
+        settingsScreen.markDirty();
+        client.setScreen(new AdvancedSettingsScreen(settingsScreen));
+    }
+
+    private void openColorPicker(boolean text) {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        int color = text ? settings.textArgb : settings.backgroundArgb;
         client.setScreen(new ColorPickerScreen(this, String.format("%08X", color),
-                value -> applyColor(value, marker), () -> resetColor(marker)));
+                value -> applyColor(value, text), () -> resetColor(text)));
     }
 
-    private void resetColor(boolean marker) {
-        applyColor(marker ? "CCDBDBD3" : "E01C1C1C", marker);
+    private void resetColor(boolean text) {
+        applyColor(text ? "FFFFFFFF" : "E01C1C1C", text);
     }
 
-    private void applyColor(String value, boolean marker) {
+    private void applyColor(String value, boolean text) {
         try {
             int color = (int)Long.parseLong(value.replace("#", ""), 16);
             WaypointSettings settings = WaypointsPlusClient.config().settings();
-            if (marker) {
-                settings.markerArgb = color;
-                markerColor.setText(String.format("%08X", color));
+            if (text) {
+                settings.textArgb = color;
+                textColor.setText(String.format("%08X", color));
             } else {
                 settings.backgroundArgb = color;
                 backgroundColor.setText(String.format("%08X", color));
@@ -208,7 +220,7 @@ final class AdvancedSettingsScreen extends Screen {
         context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
         context.getMatrices().pop();
         context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, top + 80, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Marker", "Domyślny znacznik"), left + 12, top + 110, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Text", "Domyślny tekst"), left + 12, top + 110, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, top + 140, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
                 left + 12, top + 170, 0xFFD9E2F0);

@@ -11,6 +11,8 @@ record WaypointSettingsSnapshot(
         String language,
         float scale,
         int markerArgb,
+        int textArgb,
+        boolean matchTextToBorder,
         int backgroundArgb,
         int markerTintPercent
 ) {
@@ -26,6 +28,8 @@ record WaypointSettingsSnapshot(
                 settings.language,
                 settings.scale,
                 settings.markerArgb,
+                settings.textArgb,
+                settings.matchTextToBorder,
                 settings.backgroundArgb,
                 settings.markerTintPercent
         );
@@ -42,6 +46,8 @@ record WaypointSettingsSnapshot(
         settings.language = language;
         settings.scale = scale;
         settings.markerArgb = markerArgb;
+        settings.textArgb = textArgb;
+        settings.matchTextToBorder = matchTextToBorder;
         settings.backgroundArgb = backgroundArgb;
         settings.markerTintPercent = markerTintPercent;
     }

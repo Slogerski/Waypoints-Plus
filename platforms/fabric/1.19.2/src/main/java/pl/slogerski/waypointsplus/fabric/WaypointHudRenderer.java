@@ -121,6 +121,7 @@ final class WaypointHudRenderer {
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
+        int textColor = settings.matchTextToBorder ? color : settings.textArgb;
         int background = settings.background
                 ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
                 : 0;
@@ -135,7 +136,7 @@ final class WaypointHudRenderer {
                     x + textWidth + 3.0f, 8.0f, background, color);
         }
         if (texts != null) {
-            client.textRenderer.draw(text, x, -3.0f, color, false, matrices.peek().getPositionMatrix(),
+            client.textRenderer.draw(text, x, -3.0f, textColor, false, matrices.peek().getPositionMatrix(),
                     texts, true, 0, FULL_BRIGHT);
         }
         matrices.pop();

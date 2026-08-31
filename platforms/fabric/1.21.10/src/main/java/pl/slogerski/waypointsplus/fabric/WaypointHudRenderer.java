@@ -149,6 +149,7 @@ final class WaypointHudRenderer {
         int background = settings.background
                 ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
                 : 0;
+        int textColor = settings.matchTextToBorder ? color : settings.textArgb;
 
         matrices.push();
         matrices.translate(dx, dy, dz);
@@ -160,7 +161,7 @@ final class WaypointHudRenderer {
                 (entry, vertices) -> drawRoundedPanel(vertices, entry.getPositionMatrix(),
                         x - 3.0f, -7.0f, x + textWidth + 3.0f, 8.0f, background, color));
         textQueue.submitText(matrices, x, -3.0f, text.asOrderedText(), false,
-                TextRenderer.TextLayerType.SEE_THROUGH, FULL_BRIGHT, color, 0, 0);
+                TextRenderer.TextLayerType.SEE_THROUGH, FULL_BRIGHT, textColor, 0, 0);
         matrices.pop();
     }
 

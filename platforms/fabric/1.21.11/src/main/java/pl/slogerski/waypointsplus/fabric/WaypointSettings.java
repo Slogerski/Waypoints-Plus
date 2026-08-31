@@ -17,6 +17,8 @@ final class WaypointSettings {
     String language = "en";
     float scale = 1.15f;
     int markerArgb = 0xCCDBDBD3;
+    int textArgb = 0xFFFFFFFF;
+    boolean matchTextToBorder = true;
     int backgroundArgb = 0xE01C1C1C;
     int markerTintPercent = 25;
     List<String> waypointColorHistory = new ArrayList<>();
@@ -33,6 +35,8 @@ final class WaypointSettings {
         language = "en";
         scale = 1.15f;
         markerArgb = 0xCCDBDBD3;
+        textArgb = 0xFFFFFFFF;
+        matchTextToBorder = true;
         backgroundArgb = 0xE01C1C1C;
         markerTintPercent = 25;
     }

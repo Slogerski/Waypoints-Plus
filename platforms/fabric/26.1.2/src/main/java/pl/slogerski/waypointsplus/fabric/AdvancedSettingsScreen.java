@@ -11,7 +11,7 @@ final class AdvancedSettingsScreen extends Screen {
     private final WaypointSettingsScreen settingsScreen;
     private Button saveButton;
     private EditBox scale;
-    private EditBox markerColor;
+    private EditBox textColor;
     private EditBox backgroundColor;
     private EditBox markerTint;
     private String validTint;
@@ -39,9 +39,9 @@ final class AdvancedSettingsScreen extends Screen {
         scale = field(left + 224, top + 74, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setResponder(value -> applyScale());
-        markerColor = field(left + 224, top + 104, 82, String.format("%08X", settings.markerArgb), "Marker");
-        markerColor.setMaxLength(9);
-        markerColor.setResponder(value -> applyArgb(value, true));
+        textColor = field(left + 224, top + 104, 82, String.format("%08X", settings.textArgb), "Text");
+        textColor.setMaxLength(9);
+        textColor.setResponder(value -> applyArgb(value, true));
         backgroundColor = field(left + 224, top + 134, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setResponder(value -> applyArgb(value, false));
@@ -66,14 +66,19 @@ final class AdvancedSettingsScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(false))
                 .pos(left + 154, top + 134).size(64, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(
+                        UiText.get("Match Text To Border", "Dopasuj tekst do obramowania")
+                                + ": " + (settings.matchTextToBorder ? "ON" : "OFF")),
+                button -> toggleTextBorderMatch())
+                .pos(left + 10, top + 200).size(296, 20).build());
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
-                .pos(left + 10, top + 200).size(296, 20).build());
+                .pos(left + 94, top + 224).size(132, 20).build());
         saveButton = addRenderableWidget(Button.builder(saveLabel(), button -> save())
-                .pos(left + 10, top + 224).size(144, 20).build());
+                .pos(left + 10, top + 224).size(78, 20).build());
         saveButton.active = settingsScreen.hasUnsavedChanges();
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Back", "Wróć")), button -> onClose())
-                .pos(left + 162, top + 224).size(144, 20).build());
+                .pos(left + 232, top + 224).size(74, 20).build());
     }
 
     private void save() {
@@ -107,14 +112,14 @@ final class AdvancedSettingsScreen extends Screen {
         } catch (NumberFormatException ignored) { }
     }
 
-    private void applyArgb(String value, boolean marker) {
+    private void applyArgb(String value, boolean text) {
         String hex = value.replace("#", "");
         if (hex.length() != 8) return;
         try {
             int color = (int)Long.parseLong(hex, 16);
             WaypointSettings settings = WaypointsPlusClient.config().settings();
-            if ((marker ? settings.markerArgb : settings.backgroundArgb) != color) {
-                if (marker) settings.markerArgb = color;
+            if ((text ? settings.textArgb : settings.backgroundArgb) != color) {
+                if (text) settings.textArgb = color;
                 else settings.backgroundArgb = color;
                 markDirty();
             }
@@ -167,24 +172,31 @@ final class AdvancedSettingsScreen extends Screen {
         minecraft.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }
 
-    private void openColorPicker(boolean marker) {
+    private void toggleTextBorderMatch() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
-        int color = marker ? settings.markerArgb : settings.backgroundArgb;
+        settings.matchTextToBorder = !settings.matchTextToBorder;
+        settingsScreen.markDirty();
+        minecraft.setScreen(new AdvancedSettingsScreen(settingsScreen));
+    }
+
+    private void openColorPicker(boolean text) {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        int color = text ? settings.textArgb : settings.backgroundArgb;
         minecraft.setScreen(new ColorPickerScreen(this, String.format("%08X", color),
-                value -> applyColor(value, marker), () -> resetColor(marker)));
+                value -> applyColor(value, text), () -> resetColor(text)));
     }
 
-    private void resetColor(boolean marker) {
-        applyColor(marker ? "CCDBDBD3" : "E01C1C1C", marker);
+    private void resetColor(boolean text) {
+        applyColor(text ? "FFFFFFFF" : "E01C1C1C", text);
     }
 
-    private void applyColor(String value, boolean marker) {
+    private void applyColor(String value, boolean text) {
         try {
             int color = (int)Long.parseLong(value.replace("#", ""), 16);
             WaypointSettings settings = WaypointsPlusClient.config().settings();
-            if (marker) {
-                settings.markerArgb = color;
-                markerColor.setValue(String.format("%08X", color));
+            if (text) {
+                settings.textArgb = color;
+                textColor.setValue(String.format("%08X", color));
             } else {
                 settings.backgroundArgb = color;
                 backgroundColor.setValue(String.format("%08X", color));
@@ -219,7 +231,7 @@ final class AdvancedSettingsScreen extends Screen {
         graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
         graphics.pose().popMatrix();
         graphics.text(font, UiText.get("Scale", "Skala"), left + 12, top + 80, 0xFFD9E2F0, true);
-        graphics.text(font, UiText.get("Default Marker", "Domyślny znacznik"), left + 12, top + 110, 0xFFD9E2F0, true);
+        graphics.text(font, UiText.get("Default Text", "Domyślny tekst"), left + 12, top + 110, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Default Background", "Domyślne tło"), left + 12, top + 140, 0xFFD9E2F0, true);
         graphics.text(font, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
                 left + 12, top + 170, 0xFFD9E2F0, true);
