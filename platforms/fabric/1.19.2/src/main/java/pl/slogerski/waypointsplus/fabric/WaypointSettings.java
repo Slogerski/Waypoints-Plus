@@ -17,7 +17,7 @@ final class WaypointSettings {
     String language = "en";
     float scale = 1.15f;
     int markerArgb = 0xCCDBDBD3;
-    int textArgb = 0xFFFFFFFF;
+    int textArgb = 0xFFDFD9D9;
     boolean matchTextToBorder = true;
     int backgroundArgb = 0xE01C1C1C;
     int markerTintPercent = 25;
@@ -35,7 +35,7 @@ final class WaypointSettings {
         language = "en";
         scale = 1.15f;
         markerArgb = 0xCCDBDBD3;
-        textArgb = 0xFFFFFFFF;
+        textArgb = 0xFFDFD9D9;
         matchTextToBorder = true;
         backgroundArgb = 0xE01C1C1C;
         markerTintPercent = 25;

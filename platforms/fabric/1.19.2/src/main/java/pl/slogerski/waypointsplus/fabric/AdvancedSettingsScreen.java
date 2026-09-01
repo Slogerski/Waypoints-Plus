@@ -178,7 +178,7 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     private void resetColor(boolean text) {
-        applyColor(text ? "FFFFFFFF" : "E01C1C1C", text);
+        applyColor(text ? "FFDFD9D9" : "E01C1C1C", text);
     }
 
     private void applyColor(String value, boolean text) {
