@@ -1,5 +1,8 @@
-![aa](https://cdn.modrinth.com/data/cached_images/6c02ea6a406ee040def164f51a8835d175682fc5_0.webp)
-# Waypoints Plus
+
+![WaypointsPlus](https://cdn.modrinth.com/data/cached_images/04a473c950b6194611b8c394e21eab240d3198ab_0.webp)
+<p align="center">
+
+</p>
 <p align="center">
    <a href="https://modrinth.com/mod/waypoints-plus">
     <img src="https://img.shields.io/badge/Pobierz-Modrinth-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white" alt="Pobierz z Modrinth">
@@ -10,85 +13,110 @@
   <a href="https://github.com/Slogerski/Waypoints-Plus">
     <img src="https://img.shields.io/badge/Kod_źródłowy-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Kod źródłowy">
   </a>
-</p>
-**Waypoints Plus** is a lightweight client-side Fabric mod for creating colorful, smooth waypoint markers. It provides per-server profiles, cross-dimension coordinate conversion, customizable visuals, and convenient in-game management.
 
-## Main features
+**Waypoints Plus** is a lightweight, client-side Fabric mod for creating smooth and customizable waypoint markers.
 
-- Smooth world-space waypoint labels that always face the camera.
-- Visibility through walls and beyond loaded chunks.
+Create separate profiles, organize waypoints per server or singleplayer world, and customize their appearance directly in game. No server installation is required.
 
-  ![Waypoint visible through walls](https://cdn.modrinth.com/data/cached_images/508c974789f762e07739a94b9ad77deb36211a8a.png)
+## Features
 
-- Waypoints separated per multiplayer server or singleplayer world.
-- Multiple profiles available on every server.
+- Smooth world-space waypoint markers.
+- Visible through walls and beyond loaded chunks.
+- Markers always face the camera.
+- Separate waypoint storage for every server and singleplayer world.
+- Multiple profiles for each world or server.
+- Automatic death waypoints stored in a dedicated profile.
+- Overworld and Nether coordinate conversion using the vanilla `8:1` ratio.
+- Custom waypoint names, positions, colors, and transparency.
+- Visual ARGB color picker.
+- Customizable marker and background colors.
+- Optional coordinates, distance, background, and laser.
+- Adjustable waypoint scale.
+- Depth-tested lasers that do not render through blocks.
+- English and Polish interface.
+- Full in-game waypoint creation, editing, repositioning, and deletion.
+- Human-readable JSON storage with manual reload support.
 
-  ![Waypoint profiles](https://cdn.modrinth.com/data/cached_images/2fd36136971c1513fa275b3c8bba72c1fac908aa.png)
+## Profiles
 
-- Automatic Overworld and Nether conversion at the vanilla `8:1` ratio.
-- Custom names, coordinates, vivid colors, and transparency.
-- One visual ARGB color picker.
-- Optional background, coordinates, distance, and laser.
-- Depth-tested lasers that do not draw over blocks.
-- Adjustable label scale.
-- English and Polish GUI.
-- Full in-game creation, editing, repositioning, renaming, and deletion.
-- Human-readable JSON files with manual in-game reload support.
+Keep different groups of waypoints separate without mixing everything into one list. Each server or world can contain multiple independent profiles.
 
-![Waypoint editor](https://cdn.modrinth.com/data/cached_images/a7a7d25f2cc3738de3a55edfe372b9c790c8c0df.png)
+![Replace this with a description](https://cdn.modrinth.com/data/cached_images/fd2d237376a8c98da11758db7d1e8f4a372a3e60.png)
 
-![Waypoint settings](https://cdn.modrinth.com/data/cached_images/c2f885458fa6e35ad00b63700a11140ab6507556.png)
+## Waypoint management
 
-## Controls
+Create waypoints at your current position or enter custom coordinates. Existing waypoints can be renamed, moved, recolored, or removed directly from the management screen.
 
-- `B` - create waypoint.
-- `M` - manage waypoints.
-- Reload waypoint file - unassigned.
-- Previous profile - unassigned.
-- Next profile - unassigned.
+![Replace this with a description](https://cdn.modrinth.com/data/cached_images/cd94be045a45f9448d6ddca281e58b694eb4a57c.png)
 
-All controls are configurable from Minecraft's standard Controls menu.
+---
+![Replace this with a description](https://cdn.modrinth.com/data/cached_images/ea47ff76d24daa2ee3422219d075c807ec0bf818.png)
+---
+
+## Customization
+
+Control the information displayed on waypoint markers and adjust their appearance without editing configuration files manually.
+
+Available options include:
+
+- Background visibility.
+- Coordinates visibility.
+- Distance visibility.
+- Laser visibility.
+- Marker scale.
+- Default marker color.
+- Default background color.
+- Menu background and blur where supported.
+- English and Polish language.
+![Replace this with a description](https://cdn.modrinth.com/data/cached_images/58c7415412a9fd8e24bc08265ddf215bffba4642.png)
+
+## Default controls
+
+| Action | Default key |
+|---|---:|
+| Create Waypoint | `b` |
+| Manage Waypoints | `;` |
+| Previous Waypoint Profile | `Left Arrow` |
+| Next Waypoint Profile | `Right Arrow` |
+| Reload Waypoints From File | Unassigned |
+| Quick Waypoint | Unassigned |
+| Copy Current Position | Unassigned |
+
+All controls can be changed in Minecraft's standard Controls menu.
 
 ## Screenshot privacy
 
-Both waypoint coordinates and distance can be turned off. Disable them before taking screenshots or recordings when you want to avoid revealing exact location information.
+Waypoint coordinates and distance can be disabled independently. Turn them off before taking screenshots or recording when you do not want to reveal an exact location.
+
+## Supported versions
+
+Waypoints Plus provides a separate, optimized JAR for each supported Minecraft version:
+
+- `1.19.2`
+- `1.20.1`
+- `1.20.6`
+- `1.21.1`
+- `1.21.4`
+- `1.21.5`
+- `1.21.6`
+- `1.21.8`
+- `1.21.10`
+- `1.21.11`
+- `26.1.2`
+- `26.2`
+
+Always install the file marked for your exact Minecraft version.
 
 ## Requirements
 
-- Fabric Loader.
-- Fabric API.
-- Minecraft `1.19.2` or `1.20.1` with Java 17.
-- Minecraft `1.20.6`, `1.21.1`, `1.21.2`–`1.21.6`, `1.21.8`, `1.21.10`, or `1.21.11` with Java 21.
-- Minecraft `26.1.2` or `26.2` with Java 25.
+- [Fabric Loader](https://fabricmc.net/)
+- [Fabric API](https://modrinth.com/mod/fabric-api)
 
-Each supported Minecraft version receives a separately built JAR with exact loader metadata.
-Minecraft `26.3` will be added only after official Minecraft and Fabric artifacts are available.
-
-Waypoints Plus is entirely client-side. A server does not need to install it.
+Waypoints Plus is entirely client-side. It does not need to be installed on the server.
 
 ## Local data
 
-Waypoint data is stored in readable per-server files:
+Configuration and waypoint data are stored in:
 
 ```text
-config/waypointsplus/profiles.json
-config/waypointsplus/waypoints/<server-file-id>.json
-```
-
-`profiles.json` maps each server or world to its waypoint file. You can edit the
-active server file outside Minecraft and use the reload keybind afterward.
-
-## Project links
-
-- [Modrinth profile](https://modrinth.com/user/Slogerski)
-- [CurseForge projects](https://www.curseforge.com/members/slogerski/projects)
-- [Source](https://github.com/Slogerski/Waypoints-Plus)
-- [Buy Me a Coffee](https://buymeacoffee.com/slogerski)
-
-![More screenshots](https://cdn.discordapp.com/attachments/1473421832282439680/1530993566741168148/ImageToStl.com_model.gltf_1.gif?ex=6a67985e&is=6a6646de&hm=641fc80f26690a5489e0fea2323b61c667ea39c537d47648ac9f1f7a73bfd66b&)
-
-## License
-
-Copyright (c) 2026 Slogerski. All rights reserved. See [LICENSE](LICENSE).
-
-Created by **Slogerski**.
+config/waypointsplus/
