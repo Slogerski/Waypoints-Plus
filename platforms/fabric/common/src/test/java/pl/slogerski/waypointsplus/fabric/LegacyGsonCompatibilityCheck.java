@@ -44,6 +44,20 @@ public final class LegacyGsonCompatibilityCheck {
 
         List<Waypoint> roundTrip = gson.fromJson(gson.toJson(decoded, listType), listType);
         require(roundTrip.equals(decoded), "Waypoint JSON round trip changed data");
+        Type alertListType = new TypeToken<List<FightAlertManager.FightAlert>>() { }.getType();
+        List<FightAlertManager.FightAlert> alerts = gson.fromJson("""
+                [{"id":"alert-1","service":"DISCORD","method":"WEBHOOK",
+                  "triggerType":"SINGLE_PRESS","keyCode":66,"pressCount":3,"windowMs":2000,
+                  "webhookUrl":"https://discord.com/api/webhooks/test/value","message":"Help",
+                  "enabled":true,"combinationKeys":[],"name":"Alert","popupEnabled":false,
+                  "recipients":[],"messageIntervalMs":1500}]
+                """, alertListType);
+        require(alerts.size() == 1 && alerts.get(0).id().equals("alert-1"),
+                "Fight alert JSON was not decoded by Gson 2.8.9");
+        List<FightAlertManager.FightAlert> alertRoundTrip =
+                gson.fromJson(gson.toJson(alerts, alertListType), alertListType);
+        require(alertRoundTrip.size() == 1,
+                "Fight alert JSON round trip failed");
         WaypointSettings legacySettings = gson.fromJson("{\"scale\":1.0}", WaypointSettings.class);
         legacySettings.sanitize();
         require(legacySettings.schemaVersion == 1, "Legacy settings schema was not upgraded");

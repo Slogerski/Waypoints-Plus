@@ -4,8 +4,11 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.ActionResult;
 import org.lwjgl.glfw.GLFW;
 import pl.slogerski.waypointsplus.core.WaypointNames;
 
@@ -33,7 +36,13 @@ public final class WaypointsPlusClient implements ClientModInitializer {
     public void onInitializeClient() {
         config = new WaypointConfigStore();
         config.load();
+        FightAlertManager.load();
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (world.isClient() && entity instanceof PlayerEntity opponent) FightAlertManager.recordOpponent(opponent);
+            return ActionResult.PASS;
+        });
         WaypointHudRenderer.register();
+        FightAlertNotifications.register();
         createWaypointKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.create", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY));
         manageWaypointsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -50,6 +59,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 "key.waypointsplus.copy_position", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            FightAlertManager.tick(client);
             if (client.player != null) {
                 var position = client.player.getBlockPos();
                 lastPlayerX = position.getX();

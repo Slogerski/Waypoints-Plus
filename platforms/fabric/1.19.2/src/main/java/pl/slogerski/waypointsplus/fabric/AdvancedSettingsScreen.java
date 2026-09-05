@@ -2,12 +2,25 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.Util;
+
+import java.util.ArrayList;
+import java.util.List;
 
 final class AdvancedSettingsScreen extends Screen {
-    private static final int FIELD_ACCENT = 0xFFD946EF;
+    private static final int CONTENT_HEIGHT = 205;
+    private static final int SCROLL_STEP = 18;
+    private static final int SCROLL_TRACK = 0x805A5A5A;
+    private static final int SCROLL_THUMB = 0xFF969696;
+    private static final int SCROLL_THUMB_HOVERED = 0xFFB8B8B8;
+    private static final int SEPARATOR_COLOR = 0x605A5A5A;
+
     private final WaypointSettingsScreen settingsScreen;
+    private final List<ScrollEntry> scrollWidgets = new ArrayList<>();
+    private final List<ClickableWidget> fixedWidgets = new ArrayList<>();
     private ButtonWidget saveButton;
     private TextFieldWidget scale;
     private TextFieldWidget textColor;
@@ -15,6 +28,9 @@ final class AdvancedSettingsScreen extends Screen {
     private TextFieldWidget markerTint;
     private int left;
     private int top;
+    private double scrollOffset;
+    private boolean draggingScrollbar;
+    private double scrollbarGrabOffset;
 
     AdvancedSettingsScreen(WaypointSettingsScreen settingsScreen) {
         super(Text.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")));
@@ -22,54 +38,60 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     @Override protected void init() {
+        scrollWidgets.clear();
+        fixedWidgets.clear();
         left = width / 2 - 158;
         top = Math.max(2, (height - 258) / 2);
         WaypointSettings settings = WaypointsPlusClient.config().settings();
-        addDrawableChild(ButtonWidget.builder(Text.literal(
-                        UiText.get("Dark Background", "Ciemne tło") + ": " + (settings.menuBackground ? "ON" : "OFF")),
-                button -> toggleMenuBackground())
-                .dimensions(left + 10, top + 40, 144, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(
-                        UiText.get("Cross-dimensional", "Między wymiarami") + ": "
-                                + (settings.crossDimensionWaypoints ? "ON" : "OFF")),
-                button -> toggleCrossDimensionWaypoints())
-                .dimensions(left + 162, top + 40, 144, 20).build());
-        scale = field(left + 224, top + 74, 82, String.valueOf(settings.scale), "Scale");
+        scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Fights Alerts", "Alerty walki")),
+                button -> client.setScreen(new FightAlertsScreen(this)))
+                .dimensions(left + 10, 0, 296, 18).build(), 6);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.menuBackground ? "ON" : "OFF"),
+                button -> toggleMenuBackground(button))
+                .dimensions(left + 224, 0, 82, 18).build(), 31);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.crossDimensionWaypoints ? "ON" : "OFF"),
+                button -> toggleCrossDimensionWaypoints(button))
+                .dimensions(left + 224, 0, 82, 18).build(), 56);
+        scale = field(left + 224, 81, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setChangedListener(value -> applyScale());
-        textColor = field(left + 224, top + 104, 82, String.format("%08X", settings.textArgb), "Text");
+        textColor = field(left + 224, 106, 82, String.format("%08X", settings.textArgb), "Text");
         textColor.setMaxLength(9);
         textColor.setChangedListener(value -> applyArgb(value, true));
-        backgroundColor = field(left + 224, top + 134, 82, String.format("%08X", settings.backgroundArgb), "Background");
+        backgroundColor = field(left + 224, 131, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setChangedListener(value -> applyArgb(value, false));
-        markerTint = new TextFieldWidget(textRenderer, left + 229, top + 170, 72, 10,
+        markerTint = new TextFieldWidget(textRenderer, left + 229, 0, 72, 10,
                 Text.literal(UiText.get("Marker Tint", "Zabarwienie znacznika")));
         markerTint.setDrawsBackground(false);
         markerTint.setMaxLength(3);
         markerTint.setTextPredicate(AdvancedSettingsScreen::isValidTint);
         markerTint.setText(Integer.toString(settings.markerTintPercent));
         markerTint.setChangedListener(value -> applyMarkerTint());
-        addDrawableChild(markerTint);
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
+        scrollChild(markerTint, 161);
+        scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(true))
-                .dimensions(left + 154, top + 104, 64, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
+                .dimensions(left + 154, 0, 64, 18).build(), 106);
+        scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(false))
-                .dimensions(left + 154, top + 134, 64, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(
-                        UiText.get("Match Text To Border", "Dopasuj tekst do obramowania")
-                                + ": " + (settings.matchTextToBorder ? "ON" : "OFF")),
-                button -> toggleTextBorderMatch())
-                .dimensions(left + 10, top + 200, 296, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
+                .dimensions(left + 154, 0, 64, 18).build(), 131);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.matchTextToBorder ? "ON" : "OFF"),
+                button -> toggleTextBorderMatch(button))
+                .dimensions(left + 224, 0, 82, 18).build(), 181);
+        fixedChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
                 .dimensions(left + 94, top + 224, 132, 20).build());
-        saveButton = addDrawableChild(ButtonWidget.builder(saveLabel(), button -> save())
+        saveButton = fixedChild(ButtonWidget.builder(saveLabel(), button -> save())
                 .dimensions(left + 10, top + 224, 78, 20).build());
         saveButton.active = settingsScreen.hasUnsavedChanges();
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")), button -> close())
+        fixedChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")), button -> close())
                 .dimensions(left + 232, top + 224, 74, 20).build());
+        fixedChild(ButtonWidget.builder(Text.literal("?"), button -> {
+            String language = "pl".equals(settings.language) ? "pl" : "en";
+            Util.getOperatingSystem().open("https://slogerski.github.io/Waypoints-Plus/?lang="
+                    + language + "#settings");
+        }).dimensions(left + 297, top + 5, 14, 14).build());
+        setScroll(scrollOffset);
     }
 
     private void save() {
@@ -83,12 +105,46 @@ final class AdvancedSettingsScreen extends Screen {
         saveButton.active = settingsScreen.hasUnsavedChanges();
     }
 
-    private TextFieldWidget field(int x, int y, int width, String value, String hint) {
-        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, y + 6, width - 10, 10, Text.literal(hint));
+    private TextFieldWidget field(int x, int contentY, int width, String value, String hint) {
+        TextFieldWidget field = new TextFieldWidget(textRenderer, x + 5, 0, width - 10, 10, Text.literal(hint));
         field.setDrawsBackground(false);
         field.setText(value);
-        addDrawableChild(field);
+        scrollChild(field, contentY + 5);
         return field;
+    }
+
+    private <T extends ClickableWidget> T scrollChild(T widget, int contentY) {
+        addDrawableChild(widget);
+        scrollWidgets.add(new ScrollEntry(widget, contentY));
+        return widget;
+    }
+
+    private <T extends ClickableWidget> T fixedChild(T widget) {
+        addDrawableChild(widget);
+        fixedWidgets.add(widget);
+        return widget;
+    }
+
+    private int viewportTop() {
+        return top + 34;
+    }
+
+    private int viewportBottom() {
+        return top + 218;
+    }
+
+    private int maxScroll() {
+        return Math.max(0, CONTENT_HEIGHT - (viewportBottom() - viewportTop()));
+    }
+
+    private void setScroll(double value) {
+        scrollOffset = Math.max(0.0, Math.min(maxScroll(), value));
+        int viewportTop = viewportTop();
+        for (ScrollEntry entry : scrollWidgets) {
+            entry.widget.y = viewportTop + entry.contentY - (int)Math.round(scrollOffset);
+            entry.widget.visible = entry.widget.y + entry.widget.getHeight() > viewportTop
+                    && entry.widget.y < viewportBottom();
+        }
     }
 
     private void applyScale() {
@@ -149,25 +205,25 @@ final class AdvancedSettingsScreen extends Screen {
         }
     }
 
-    private void toggleMenuBackground() {
+    private void toggleMenuBackground(net.minecraft.client.gui.widget.ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;
-        settingsScreen.markDirty();
-        client.setScreen(new AdvancedSettingsScreen(settingsScreen));
+        button.setMessage(Text.literal(settings.menuBackground ? "ON" : "OFF"));
+        markDirty();
     }
 
-    private void toggleCrossDimensionWaypoints() {
+    private void toggleCrossDimensionWaypoints(net.minecraft.client.gui.widget.ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.crossDimensionWaypoints = !settings.crossDimensionWaypoints;
-        settingsScreen.markDirty();
-        client.setScreen(new AdvancedSettingsScreen(settingsScreen));
+        button.setMessage(Text.literal(settings.crossDimensionWaypoints ? "ON" : "OFF"));
+        markDirty();
     }
 
-    private void toggleTextBorderMatch() {
+    private void toggleTextBorderMatch(net.minecraft.client.gui.widget.ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.matchTextToBorder = !settings.matchTextToBorder;
-        settingsScreen.markDirty();
-        client.setScreen(new AdvancedSettingsScreen(settingsScreen));
+        button.setMessage(Text.literal(settings.matchTextToBorder ? "ON" : "OFF"));
+        markDirty();
     }
 
     private void openColorPicker(boolean text) {
@@ -206,21 +262,125 @@ final class AdvancedSettingsScreen extends Screen {
         renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
         GuiPalette.panel(context, left, top, left + 316, top + 256);
-        GuiPalette.input(context, left + 224, top + 74, 82, 20);
-        GuiPalette.input(context, left + 224, top + 104, 82, 20);
-        GuiPalette.input(context, left + 224, top + 134, 82, 20);
-        GuiPalette.input(context, left + 224, top + 164, 82, 20);
-        super.render(matrices, mouseX, mouseY, delta);
+        int contentTop = viewportTop() - (int)Math.round(scrollOffset);
+        context.enableScissor(left + 4, viewportTop(), left + 307, viewportBottom());
+        for (int y : new int[] {51, 76, 101, 126, 151, 176}) {
+            drawSeparator(context, left + 12, contentTop + y - 3);
+        }
+        GuiPalette.input(context, left + 224, contentTop + 81, 82, 18);
+        GuiPalette.input(context, left + 224, contentTop + 106, 82, 18);
+        GuiPalette.input(context, left + 224, contentTop + 131, 82, 18);
+        GuiPalette.input(context, left + 224, contentTop + 156, 82, 18);
+        context.drawTextWithShadow(textRenderer, UiText.get("Blurred Background", "Rozmyte tło"),
+                left + 12, contentTop + 36, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Cross-dimensional", "Między wymiarami"),
+                left + 12, contentTop + 61, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, contentTop + 86, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Text", "Domyślny tekst"), left + 12, contentTop + 111, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, contentTop + 136, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
+                left + 12, contentTop + 161, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Match Text To Border", "Dopasuj tekst do obramowania"),
+                left + 12, contentTop + 186, 0xFFD9E2F0);
+        for (ScrollEntry entry : scrollWidgets) {
+            if (entry.widget.visible) entry.widget.render(matrices, mouseX, mouseY, delta);
+        }
+        context.disableScissor();
+        for (ClickableWidget widget : fixedWidgets) widget.render(matrices, mouseX, mouseY, delta);
         matrices.push();
         matrices.translate(width / 2.0f, top + 7.0f, 0.0f);
         matrices.scale(1.2f, 1.2f, 1.0f);
         context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
         matrices.pop();
-        context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, top + 80, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Text", "Domyślny tekst"), left + 12, top + 110, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, top + 140, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
-                left + 12, top + 170, 0xFFD9E2F0);
+        drawScrollbar(context, mouseX, mouseY);
+    }
+
+    private void drawSeparator(DrawContext context, int x, int y) {
+        context.fill(x - 2, y - 2, x - 1, y - 1, SEPARATOR_COLOR);
+        context.fill(x - 2, y - 1, x, y, SEPARATOR_COLOR);
+        context.fill(x - 1, y, x + 1, y + 1, SEPARATOR_COLOR);
+        context.fill(x + 1, y, x + 8, y + 2, SEPARATOR_COLOR);
+        context.fill(x, y + 1, x + 1, y + 2, SEPARATOR_COLOR);
+        context.fill(x + 8, y, x + 16, y + 2, SEPARATOR_COLOR);
+        context.fill(x + 16, y, x + 65, y + 1, SEPARATOR_COLOR);
+    }
+
+    private void drawScrollbar(DrawContext context, int mouseX, int mouseY) {
+        int x = left + 309;
+        int top = viewportTop();
+        int bottom = viewportBottom();
+        context.fill(x + 1, top, x + 3, bottom, SCROLL_TRACK);
+        int thumbTop = scrollbarThumbTop();
+        int thumbBottom = thumbTop + scrollbarThumbHeight();
+        int color = mouseX >= x && mouseX < x + 4 && mouseY >= thumbTop && mouseY < thumbBottom
+                ? SCROLL_THUMB_HOVERED : SCROLL_THUMB;
+        context.fill(x + 1, thumbTop, x + 3, thumbBottom, color);
+        if (thumbBottom - thumbTop > 2) context.fill(x, thumbTop + 1, x + 4, thumbBottom - 1, color);
+    }
+
+    private int scrollbarThumbHeight() {
+        int viewportHeight = viewportBottom() - viewportTop();
+        return Math.min(viewportHeight, Math.max(24, viewportHeight * viewportHeight / CONTENT_HEIGHT));
+    }
+
+    private int scrollbarThumbTop() {
+        int travel = viewportBottom() - viewportTop() - scrollbarThumbHeight();
+        if (maxScroll() == 0) return viewportTop();
+        return viewportTop() + (int)Math.round(travel * scrollOffset / maxScroll());
+    }
+
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
+        if (mouseX >= left && mouseX < left + 316 && mouseY >= viewportTop() && mouseY < viewportBottom()) {
+            setScroll(scrollOffset - verticalAmount * SCROLL_STEP);
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, verticalAmount);
+    }
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && mouseX >= left + 307 && mouseX < left + 315
+                && mouseY >= viewportTop() && mouseY < viewportBottom()) {
+            int thumbTop = scrollbarThumbTop();
+            int thumbBottom = thumbTop + scrollbarThumbHeight();
+            if (mouseY >= thumbTop && mouseY < thumbBottom) {
+                scrollbarGrabOffset = mouseY - thumbTop;
+            } else {
+                scrollbarGrabOffset = scrollbarThumbHeight() / 2.0;
+                scrollFromMouse(mouseY);
+            }
+            draggingScrollbar = true;
+            return true;
+        }
+        if (mouseY < viewportTop() || mouseY >= viewportBottom()) {
+            for (ScrollEntry entry : scrollWidgets) entry.widget.visible = false;
+            boolean handled = super.mouseClicked(mouseX, mouseY, button);
+            setScroll(scrollOffset);
+            return handled;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (button == 0 && draggingScrollbar) {
+            scrollFromMouse(mouseY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
+    @Override public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && draggingScrollbar) {
+            draggingScrollbar = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private void scrollFromMouse(double mouseY) {
+        int travel = viewportBottom() - viewportTop() - scrollbarThumbHeight();
+        if (travel <= 0) return;
+        double position = mouseY - viewportTop() - scrollbarGrabOffset;
+        setScroll(position / travel * maxScroll());
     }
 
     @Override public void renderBackground(MatrixStack matrices) {
@@ -231,4 +391,6 @@ final class AdvancedSettingsScreen extends Screen {
     @Override public void close() {
         client.setScreen(settingsScreen);
     }
+
+    private record ScrollEntry(ClickableWidget widget, int contentY) { }
 }

@@ -355,7 +355,7 @@ final class ColorPickerScreen extends Screen {
         List<String> colors = new ArrayList<>();
         appendColors(colors, WaypointsPlusClient.config().settings().waypointColorHistory);
         appendColor(colors, String.format("%08X", WaypointsPlusClient.config().settings().markerArgb));
-        appendColor(colors, "F3DF0707");
+        appendColor(colors, "FFC72424");
         appendColor(colors, "F33BEB14");
         appendColor(colors, "F31F34F0");
         appendColor(colors, "FFAD10BF");

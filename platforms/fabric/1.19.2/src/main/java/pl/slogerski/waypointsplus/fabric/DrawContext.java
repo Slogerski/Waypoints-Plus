@@ -2,6 +2,7 @@ package pl.slogerski.waypointsplus.fabric;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.render.GameRenderer;
@@ -23,6 +24,20 @@ final class DrawContext {
 
     void fill(int left, int top, int right, int bottom, int color) {
         DrawableHelper.fill(matrices, left, top, right, bottom, color);
+    }
+
+    void enableScissor(int left, int top, int right, int bottom) {
+        var window = MinecraftClient.getInstance().getWindow();
+        double scale = window.getScaleFactor();
+        int x = (int)Math.floor(left * scale);
+        int y = window.getFramebufferHeight() - (int)Math.ceil(bottom * scale);
+        int width = Math.max(0, (int)Math.ceil((right - left) * scale));
+        int height = Math.max(0, (int)Math.ceil((bottom - top) * scale));
+        RenderSystem.enableScissor(x, y, width, height);
+    }
+
+    void disableScissor() {
+        RenderSystem.disableScissor();
     }
 
     void drawCenteredTextWithShadow(TextRenderer renderer, Text text, int x, int y, int color) {
