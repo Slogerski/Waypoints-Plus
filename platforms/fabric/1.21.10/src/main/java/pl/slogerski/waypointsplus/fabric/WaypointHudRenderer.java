@@ -5,49 +5,37 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.command.RenderCommandQueue;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.resource.Resource;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
-import net.minecraft.text.StyleSpriteSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
+import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 final class WaypointHudRenderer {
     private static final int FULL_BRIGHT = 0xF000F0;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final double VIEW_CULL_DOT = -0.15;
-    private static final Identifier TEXT_EFFECTS_CONFIG = Identifier.of(
-            "minecraft", "shaders/include/texteffects_config.glsl");
-    private static final StyleSpriteSource.Font COMPATIBILITY_FONT =
-            new StyleSpriteSource.Font(Identifier.of("waypointsplus", "waypoint"));
-    private static final List<Identifier> VANILLA_FONT_DEFINITIONS = List.of(
-            Identifier.of("minecraft", "font/default.json"),
-            Identifier.of("minecraft", "font/uniform.json"),
-            Identifier.of("minecraft", "font/alt.json"));
+    private static final WaypointTextShaders TEXT_SHADERS = new WaypointTextShaders();
     private static long cachedRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
     private static String cachedDimension;
     private static boolean cachedCrossDimensionWaypoints;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
-    private static volatile boolean textEffectsCompatibilityActive;
 
     private WaypointHudRenderer() { }
 
@@ -61,34 +49,20 @@ final class WaypointHudRenderer {
                 new SimpleSynchronousResourceReloadListener() {
                     @Override
                     public Identifier getFabricId() {
-                        return Identifier.of("waypointsplus", "text_effects_compatibility");
+                        return Identifier.of("waypointsplus", "text_shaders");
                     }
 
                     @Override
                     public void reload(ResourceManager manager) {
-                        textEffectsCompatibilityActive = manager.getResource(TEXT_EFFECTS_CONFIG).isPresent()
-                                && !hasPlayerFontPack(manager);
+                        WaypointTextShaders.reload(manager);
                     }
                 });
-    }
-
-    private static boolean hasPlayerFontPack(ResourceManager manager) {
-        Set<String> selectedPacks = new HashSet<>(MinecraftClient.getInstance().options.resourcePacks);
-        selectedPacks.addAll(MinecraftClient.getInstance().options.incompatibleResourcePacks);
-        for (Identifier definition : VANILLA_FONT_DEFINITIONS) {
-            for (Resource resource : manager.getAllResources(definition)) {
-                String packId = resource.getPackId();
-                if (packId.startsWith("file/") && selectedPacks.contains(packId)) return true;
-            }
-        }
-        return false;
     }
 
     private static void render(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
         WaypointConfigStore store = WaypointsPlusClient.config();
-        store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) return;
 
@@ -101,20 +75,30 @@ final class WaypointHudRenderer {
         MatrixStack matrices = context.matrices();
         OrderedRenderCommandQueue queue = context.commandQueue();
 
+        int laserBottomY = settings.laserEnabled ? client.world.getBottomY() : 0;
+        int laserTopY = settings.laserEnabled ? laserBottomY + client.world.getHeight() : 0;
+        LaserVisibility laserView = settings.laserEnabled
+                ? LaserVisibility.fromCamera(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
+                        laserBottomY, laserTopY) : null;
         List<PreparedWaypoint> visible = new ArrayList<>();
+        List<PreparedWaypoint> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
                 settings.crossDimensionWaypoints)) {
             if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
             }
-        }
-        if (settings.laserEnabled) {
-            for (PreparedWaypoint prepared : visible) {
-                drawLaser(matrices, queue, cameraPos, prepared.target(),
-                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
+            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
+                lasers.add(prepared);
             }
         }
+        if (!lasers.isEmpty()) {
+            for (PreparedWaypoint prepared : lasers) {
+                drawLaser(matrices, queue, cameraPos, prepared.target(),
+                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb), laserBottomY, laserTopY);
+            }
+        }
+        TEXT_SHADERS.beginFrame();
         for (PreparedWaypoint prepared : visible) {
             int color = parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb);
             renderLabel(client, matrices, queue, camera, cameraPos,
@@ -141,9 +125,7 @@ final class WaypointHudRenderer {
         if (settings.showCoordinates) {
             label += "  " + Math.round(target.x) + " " + Math.round(target.y) + " " + Math.round(target.z);
         }
-        Text text = textEffectsCompatibilityActive
-                ? Text.literal(label).styled(style -> style.withFont(COMPATIBILITY_FONT))
-                : Text.literal(label);
+        Text text = Text.literal(label);
         int textWidth = client.textRenderer.getWidth(text);
         float x = -textWidth / 2.0f;
         int background = settings.background
@@ -155,13 +137,13 @@ final class WaypointHudRenderer {
         matrices.translate(dx, dy, dz);
         matrices.multiply(camera.getRotation());
         matrices.scale(scale, -scale, scale);
-        RenderCommandQueue panelQueue = queue.getBatchingQueue(0);
-        RenderCommandQueue textQueue = queue.getBatchingQueue(1);
+        RenderCommandQueue panelQueue = queue.getBatchingQueue(1);
+        RenderCommandQueue textQueue = queue.getBatchingQueue(2);
         panelQueue.submitCustom(matrices, RenderLayer.getTextBackgroundSeeThrough(),
                 (entry, vertices) -> drawRoundedPanel(vertices, entry.getPositionMatrix(),
                         x - 3.0f, -7.0f, x + textWidth + 3.0f, 8.0f, background, color));
-        textQueue.submitText(matrices, x, -3.0f, text.asOrderedText(), false,
-                TextRenderer.TextLayerType.SEE_THROUGH, FULL_BRIGHT, textColor, 0, 0);
+        TEXT_SHADERS.submit(client.textRenderer, matrices, textQueue, text.asOrderedText(),
+                x, -3.0f, textColor, FULL_BRIGHT);
         matrices.pop();
     }
 
@@ -184,14 +166,14 @@ final class WaypointHudRenderer {
     }
 
     private static void drawLaser(MatrixStack matrices, OrderedRenderCommandQueue queue,
-                                  Vec3d cameraPos, DisplayTarget target, int waypointColor) {
+                                  Vec3d cameraPos, DisplayTarget target, int waypointColor, int bottomY, int topY) {
         int color = 0xB0000000 | (waypointColor & 0x00FFFFFF);
-        float bottom = (float)(-64.0 - cameraPos.y);
-        float top = (float)(384.0 - cameraPos.y);
-        float halfWidth = 0.055f;
+        float bottom = (float)(bottomY - cameraPos.y);
+        float top = (float)(topY - cameraPos.y);
+        float halfWidth = LaserVisibility.HALF_WIDTH;
         matrices.push();
         matrices.translate(target.x - cameraPos.x, 0.0, target.z - cameraPos.z);
-        queue.submitCustom(matrices, RenderLayer.getDebugQuads(), (entry, vertices) -> {
+        queue.getBatchingQueue(0).submitCustom(matrices, RenderLayer.getDebugQuads(), (entry, vertices) -> {
             Matrix4f matrix = entry.getPositionMatrix();
             vertices.vertex(matrix, -halfWidth, bottom, 0).color(color);
             vertices.vertex(matrix, -halfWidth, top, 0).color(color);

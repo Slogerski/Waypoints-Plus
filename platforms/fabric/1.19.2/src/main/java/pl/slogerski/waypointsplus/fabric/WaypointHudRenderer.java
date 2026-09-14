@@ -16,6 +16,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Matrix4f;
 import net.minecraft.util.math.Vec3d;
+import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
@@ -45,7 +46,6 @@ final class WaypointHudRenderer {
         MatrixStack matrices = context.matrixStack();
         if (client.player == null || client.world == null || matrices == null) return;
         WaypointConfigStore store = WaypointsPlusClient.config();
-        store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) return;
 
@@ -55,16 +55,25 @@ final class WaypointHudRenderer {
         store.claimLegacy(serverKey);
         Camera camera = context.camera();
         Vec3d cameraPos = camera.getPos();
+        int laserBottomY = settings.laserEnabled ? client.world.getBottomY() : 0;
+        int laserTopY = settings.laserEnabled ? laserBottomY + client.world.getHeight() : 0;
+        LaserVisibility laserView = settings.laserEnabled
+                ? LaserVisibility.fromCamera(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
+                        laserBottomY, laserTopY) : null;
         List<PreparedWaypoint> visible = new ArrayList<>();
+        List<PreparedWaypoint> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
                 settings.crossDimensionWaypoints)) {
             if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
             }
+            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
+                lasers.add(prepared);
+            }
         }
-        if (settings.laserEnabled && !visible.isEmpty()) {
-            drawLasers(matrices, cameraPos, visible, settings);
+        if (!lasers.isEmpty()) {
+            drawLasers(matrices, cameraPos, lasers, settings, laserBottomY, laserTopY);
         }
         if (!visible.isEmpty()) renderLabels(client, matrices, camera, cameraPos, visible, settings);
     }
@@ -160,10 +169,11 @@ final class WaypointHudRenderer {
     }
 
     private static void drawLasers(MatrixStack matrices, Vec3d cameraPos,
-                                   List<PreparedWaypoint> waypoints, WaypointSettings settings) {
-        float bottom = (float)(-64.0 - cameraPos.y);
-        float top = (float)(384.0 - cameraPos.y);
-        float halfWidth = 0.055f;
+                                   List<PreparedWaypoint> waypoints, WaypointSettings settings,
+                                   int bottomY, int topY) {
+        float bottom = (float)(bottomY - cameraPos.y);
+        float top = (float)(topY - cameraPos.y);
+        float halfWidth = LaserVisibility.HALF_WIDTH;
         RenderSystem.enableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();

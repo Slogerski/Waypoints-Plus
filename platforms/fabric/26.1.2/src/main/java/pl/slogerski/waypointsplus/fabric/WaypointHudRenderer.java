@@ -15,6 +15,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Quaternionf;
+import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
@@ -48,7 +49,8 @@ final class WaypointHudRenderer {
         PoseStack pose = context.poseStack();
         SubmitNodeCollector submits = context.submitNodeCollector();
         for (PreparedLaser laser : frame.lasers) {
-            drawLaser(pose, submits, frame.cameraPosition, laser.target, laser.color);
+            drawLaser(pose, submits, frame.cameraPosition, laser.target, laser.color,
+                    frame.laserBottomY, frame.laserTopY);
         }
     }
 
@@ -59,7 +61,6 @@ final class WaypointHudRenderer {
             return;
         }
         WaypointConfigStore store = WaypointsPlusClient.config();
-        store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) {
             preparedFrame = emptyFrame();
@@ -72,6 +73,11 @@ final class WaypointHudRenderer {
         store.claimLegacy(serverKey);
         Camera camera = context.camera();
         Vec3 cameraPos = camera.position();
+        int laserBottomY = settings.laserEnabled ? minecraft.level.getMinY() : 0;
+        int laserTopY = settings.laserEnabled ? laserBottomY + minecraft.level.getHeight() : 0;
+        LaserVisibility laserView = settings.laserEnabled
+                ? LaserVisibility.fromCamera(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
+                        laserBottomY, laserTopY) : null;
         List<PreparedLabel> labels = new ArrayList<>();
         List<PreparedLaser> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
@@ -79,14 +85,14 @@ final class WaypointHudRenderer {
             if (isInView(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 labels.add(prepareLabel(minecraft, cameraPos, prepared.waypoint(), prepared.target(), settings));
-                if (settings.laserEnabled) {
-                    lasers.add(new PreparedLaser(prepared.target(),
-                            parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb)));
-                }
+            }
+            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
+                lasers.add(new PreparedLaser(prepared.target(),
+                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb)));
             }
         }
         preparedFrame = new PreparedFrame(List.copyOf(labels), List.copyOf(lasers),
-                cameraPos, new Quaternionf(camera.rotation()));
+                cameraPos, new Quaternionf(camera.rotation()), laserBottomY, laserTopY);
     }
 
     private static PreparedLabel prepareLabel(Minecraft minecraft, Vec3 cameraPos, Waypoint waypoint,
@@ -166,11 +172,11 @@ final class WaypointHudRenderer {
     }
 
     private static void drawLaser(PoseStack pose, SubmitNodeCollector submits, Vec3 cameraPos,
-                                  DisplayTarget target, int waypointColor) {
+                                  DisplayTarget target, int waypointColor, int bottomY, int topY) {
         int color = 0xB0000000 | (waypointColor & 0x00FFFFFF);
-        float bottom = (float)(-64.0 - cameraPos.y);
-        float top = (float)(384.0 - cameraPos.y);
-        float halfWidth = 0.055f;
+        float bottom = (float)(bottomY - cameraPos.y);
+        float top = (float)(topY - cameraPos.y);
+        float halfWidth = LaserVisibility.HALF_WIDTH;
         pose.pushPose();
         pose.translate(target.x - cameraPos.x, 0.0, target.z - cameraPos.z);
         submits.submitCustomGeometry(pose, RenderTypes.debugQuads(), (entry, vertices) -> {
@@ -256,7 +262,7 @@ final class WaypointHudRenderer {
     }
 
     private static PreparedFrame emptyFrame() {
-        return new PreparedFrame(List.of(), List.of(), Vec3.ZERO, new Quaternionf());
+        return new PreparedFrame(List.of(), List.of(), Vec3.ZERO, new Quaternionf(), 0, 0);
     }
 
     private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
@@ -267,7 +273,8 @@ final class WaypointHudRenderer {
     private record PreparedLaser(DisplayTarget target, int color) { }
 
     private record PreparedFrame(List<PreparedLabel> labels, List<PreparedLaser> lasers,
-                                 Vec3 cameraPosition, Quaternionf cameraRotation) { }
+                                 Vec3 cameraPosition, Quaternionf cameraRotation,
+                                 int laserBottomY, int laserTopY) { }
 
     private record DisplayTarget(double x, double y, double z) { }
 }

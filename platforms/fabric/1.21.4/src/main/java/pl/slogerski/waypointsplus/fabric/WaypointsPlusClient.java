@@ -60,6 +60,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             FightAlertManager.tick(client);
+            config.retryPendingWrites();
             if (client.player != null) {
                 var position = client.player.getBlockPos();
                 lastPlayerX = position.getX();

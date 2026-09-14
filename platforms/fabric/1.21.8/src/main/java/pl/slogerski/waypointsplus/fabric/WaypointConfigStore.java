@@ -50,8 +50,6 @@ final class WaypointConfigStore {
     private PlayerSnapshot playerSnapshot;
     private String loadedServerKey;
     private Path loadedWaypointFile;
-    private long lastWaypointCheck;
-    private long waypointModified;
     private long waypointRevision;
     private boolean settingsWritable = true;
     private boolean profilesWritable = true;
@@ -296,23 +294,6 @@ final class WaypointConfigStore {
         }
     }
 
-    void reloadWaypointsIfChanged() {
-        ensureServerLoaded(ServerScope.current());
-        long now = System.currentTimeMillis();
-        if (now - lastWaypointCheck < 1000L) return;
-        lastWaypointCheck = now;
-        retryPendingWrites(now);
-        if (loadedWaypointFile == null) return;
-        try {
-            if (!waypointWritable) {
-                reloadCurrentServerFile();
-                return;
-            }
-            long modified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
-            if (modified != waypointModified) reloadCurrentServerFile();
-        } catch (IOException | RuntimeException ignored) { }
-    }
-
     void saveSettings() {
         settings.sanitize();
         if (!settingsWritable) return;
@@ -376,26 +357,8 @@ final class WaypointConfigStore {
             waypointWritable = true;
             waypointSavePending = rewritePending;
             waypointRevision++;
-            waypointModified = Files.getLastModifiedTime(file).toMillis();
         } catch (IOException | RuntimeException ignored) {
             bindUnreadableServerFile(key, resolveServerFile(state.file));
-        }
-    }
-
-    private void reloadCurrentServerFile() {
-        try {
-            List<Waypoint> loaded = readServerWaypoints(loadedWaypointFile);
-            boolean rewritePending = false;
-            if (lastReadNeededSchemaUpgrade) {
-                rewritePending = !writeServerWaypoints(loadedWaypointFile, loaded);
-            }
-            waypoints = loaded;
-            waypointWritable = true;
-            waypointSavePending = rewritePending;
-            waypointRevision++;
-            waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
-        } catch (IOException | RuntimeException ignored) {
-            waypointWritable = false;
         }
     }
 
@@ -538,9 +501,6 @@ final class WaypointConfigStore {
         waypointSavePending = !writeServerWaypoints(loadedWaypointFile, waypoints);
         waypointRevision++;
         if (waypointSavePending) return false;
-        try {
-            waypointModified = Files.getLastModifiedTime(loadedWaypointFile).toMillis();
-        } catch (IOException ignored) { }
         return true;
     }
 
@@ -650,7 +610,8 @@ final class WaypointConfigStore {
 
     private record PlayerSnapshot(int x, int y, int z) { }
 
-    private void retryPendingWrites(long now) {
+    void retryPendingWrites() {
+        long now = System.currentTimeMillis();
         if (now - lastPersistenceRetry < 1000L) return;
         lastPersistenceRetry = now;
         if (settingsSavePending && settingsWritable) saveSettings();

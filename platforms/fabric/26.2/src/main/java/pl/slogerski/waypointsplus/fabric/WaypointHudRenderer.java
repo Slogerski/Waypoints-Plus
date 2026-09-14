@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
@@ -50,7 +51,6 @@ final class WaypointHudRenderer {
         if (minecraft.player == null || minecraft.level == null) return;
 
         WaypointConfigStore store = WaypointsPlusClient.config();
-        store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) return;
 
@@ -64,18 +64,27 @@ final class WaypointHudRenderer {
         PoseStack pose = context.poseStack();
         SubmitNodeCollector submits = context.submitNodeCollector();
 
+        int laserBottomY = settings.laserEnabled ? minecraft.level.getMinY() : 0;
+        int laserTopY = settings.laserEnabled ? laserBottomY + minecraft.level.getHeight() : 0;
+        LaserVisibility laserView = settings.laserEnabled
+                ? LaserVisibility.fromCamera(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
+                        laserBottomY, laserTopY) : null;
         List<PreparedWaypoint> visible = new ArrayList<>();
+        List<PreparedWaypoint> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
                 settings.crossDimensionWaypoints)) {
             if (isInView(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
             }
+            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
+                lasers.add(prepared);
+            }
         }
-        if (settings.laserEnabled) {
-            for (PreparedWaypoint prepared : visible) {
+        if (!lasers.isEmpty()) {
+            for (PreparedWaypoint prepared : lasers) {
                 drawLaser(pose, submits, cameraPos, prepared.target(),
-                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
+                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb), laserBottomY, laserTopY);
             }
         }
         for (PreparedWaypoint prepared : visible) {
@@ -122,8 +131,8 @@ final class WaypointHudRenderer {
         pose.mulPose(camera.rotation());
         pose.scale(scale, -scale, scale);
 
-        OrderedSubmitNodeCollector panelSubmits = submits.order(0);
-        OrderedSubmitNodeCollector textSubmits = submits.order(1);
+        OrderedSubmitNodeCollector panelSubmits = submits.order(1);
+        OrderedSubmitNodeCollector textSubmits = submits.order(2);
         if (renderMode == RenderMode.DIRECT) {
             submitDirectLabel(pose, panelSubmits, textSubmits, text, x, textWidth, background, color, textColor);
         } else {
@@ -184,15 +193,15 @@ final class WaypointHudRenderer {
     }
 
     private static void drawLaser(PoseStack pose, SubmitNodeCollector submits, Vec3 cameraPos,
-                                  DisplayTarget target, int waypointColor) {
+                                  DisplayTarget target, int waypointColor, int bottomY, int topY) {
         int color = 0xB0000000 | (waypointColor & 0x00FFFFFF);
-        float bottom = (float)(-64.0 - cameraPos.y);
-        float top = (float)(384.0 - cameraPos.y);
-        float halfWidth = 0.055f;
+        float bottom = (float)(bottomY - cameraPos.y);
+        float top = (float)(topY - cameraPos.y);
+        float halfWidth = LaserVisibility.HALF_WIDTH;
 
         pose.pushPose();
         pose.translate(target.x - cameraPos.x, 0.0, target.z - cameraPos.z);
-        submits.submitCustomGeometry(pose, RenderTypes.debugQuads(), (entry, vertices) -> {
+        submits.order(0).submitCustomGeometry(pose, RenderTypes.debugQuads(), (entry, vertices) -> {
             Matrix4fc matrix = entry.pose();
             vertices.addVertex(matrix, -halfWidth, bottom, 0).setColor(color);
             vertices.addVertex(matrix, -halfWidth, top, 0).setColor(color);

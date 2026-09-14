@@ -15,6 +15,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
+import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
@@ -50,7 +51,6 @@ final class WaypointHudRenderer {
         MatrixStack matrices = context.matrixStack();
         if (client.player == null || client.world == null || matrices == null) return;
         WaypointConfigStore store = WaypointsPlusClient.config();
-        store.reloadWaypointsIfChanged();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) return;
 
@@ -62,20 +62,29 @@ final class WaypointHudRenderer {
         Vec3d cameraPos = camera.getPos();
         VertexConsumerProvider.Immediate buffers = client.getBufferBuilders().getEntityVertexConsumers();
 
+        int laserBottomY = settings.laserEnabled ? client.world.getBottomY() : 0;
+        int laserTopY = settings.laserEnabled ? laserBottomY + client.world.getHeight() : 0;
+        LaserVisibility laserView = settings.laserEnabled
+                ? LaserVisibility.fromCamera(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
+                        laserBottomY, laserTopY) : null;
         List<PreparedWaypoint> visible = new ArrayList<>();
+        List<PreparedWaypoint> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
         for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
                 settings.crossDimensionWaypoints)) {
             if (isInView(camera.getYaw(), camera.getPitch(), cameraPos.x, cameraPos.y, cameraPos.z,
                     prepared.target())) {
                 visible.add(prepared);
             }
-        }
-        if (settings.laserEnabled) {
-            for (PreparedWaypoint prepared : visible) {
-                drawLaser(matrices, buffers, cameraPos, prepared.target(),
-                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb));
+            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
+                lasers.add(prepared);
             }
-            if (!visible.isEmpty()) buffers.draw(RenderLayer.getDebugQuads());
+        }
+        if (!lasers.isEmpty()) {
+            for (PreparedWaypoint prepared : lasers) {
+                drawLaser(matrices, buffers, cameraPos, prepared.target(),
+                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb), laserBottomY, laserTopY);
+            }
+            buffers.draw(RenderLayer.getDebugQuads());
         }
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
@@ -166,11 +175,11 @@ final class WaypointHudRenderer {
     }
 
     private static void drawLaser(MatrixStack matrices, VertexConsumerProvider buffers, Vec3d cameraPos,
-                                  DisplayTarget target, int waypointColor) {
+                                  DisplayTarget target, int waypointColor, int bottomY, int topY) {
         int color = 0xB0000000 | (waypointColor & 0x00FFFFFF);
-        float bottom = (float)(-64.0 - cameraPos.y);
-        float top = (float)(384.0 - cameraPos.y);
-        float halfWidth = 0.055f;
+        float bottom = (float)(bottomY - cameraPos.y);
+        float top = (float)(topY - cameraPos.y);
+        float halfWidth = LaserVisibility.HALF_WIDTH;
         matrices.push();
         matrices.translate(target.x - cameraPos.x, 0.0, target.z - cameraPos.z);
         Matrix4f matrix = matrices.peek().getPositionMatrix();

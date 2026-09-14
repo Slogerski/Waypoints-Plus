@@ -1,0 +1,13 @@
+accessWidener v2 named
+accessible class net/minecraft/client/render/RenderSetup$TextureSpec
+accessible field net/minecraft/client/render/RenderLayer renderSetup Lnet/minecraft/client/render/RenderSetup;
+accessible field net/minecraft/client/render/RenderSetup textures Ljava/util/Map;
+accessible field net/minecraft/client/render/RenderSetup expectedBufferSize I
+accessible field net/minecraft/client/render/RenderSetup useLightmap Z
+accessible field net/minecraft/client/render/RenderSetup useOverlay Z
+accessible field net/minecraft/client/render/RenderSetup hasCrumbling Z
+accessible field net/minecraft/client/render/RenderSetup translucent Z
+accessible field net/minecraft/client/render/RenderSetup layeringTransform Lnet/minecraft/client/render/LayeringTransform;
+accessible field net/minecraft/client/render/RenderSetup outputTarget Lnet/minecraft/client/render/OutputTarget;
+accessible field net/minecraft/client/render/RenderSetup textureTransform Lnet/minecraft/client/render/TextureTransform;
+accessible field net/minecraft/client/render/RenderSetup outlineMode Lnet/minecraft/client/render/RenderSetup$OutlineMode;

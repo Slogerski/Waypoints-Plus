@@ -58,6 +58,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 "key.waypointsplus.copy_position", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             FightAlertManager.tick(client);
+            config.retryPendingWrites();
             if (client.player != null) {
                 var position = client.player.blockPosition();
                 lastPlayerX = position.getX();
