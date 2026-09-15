@@ -4,6 +4,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -101,6 +102,15 @@ abstract class WaypointFormScreen extends Screen {
         } catch (RuntimeException ignored) {
             error = UiText.get("Check the name and coordinates.", "Sprawdź nazwę i koordynaty.");
         }
+    }
+
+    @Override public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this instanceof CreateWaypointScreen && name.isFocused()
+                && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
+            save();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     protected abstract void persist(String name, int x, int y, int z, String color, String dimension);
