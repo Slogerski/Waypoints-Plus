@@ -1,0 +1,12 @@
+{
+  "key.category.waypointsplus": "Waypoints Plus",
+  "key.category.waypointsplus.waypoints": "Waypoints Plus",
+  "key.waypointsplus.create": "Create Waypoint",
+  "key.waypointsplus.manage": "Manage Waypoints",
+  "key.waypointsplus.advanced_settings": "Advanced Settings",
+  "key.waypointsplus.reload": "Reload Waypoints From File",
+  "key.waypointsplus.profile_previous": "Previous Waypoint Profile",
+  "key.waypointsplus.profile_next": "Next Waypoint Profile",
+  "key.waypointsplus.quick": "Create Waypoint From Clipboard",
+  "key.waypointsplus.copy_position": "Copy Current Position"
+}

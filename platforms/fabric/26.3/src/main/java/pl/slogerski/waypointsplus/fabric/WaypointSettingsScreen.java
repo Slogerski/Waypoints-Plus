@@ -1,0 +1,319 @@
+package pl.slogerski.waypointsplus.fabric;
+
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentService;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteContentSession;
+import pl.slogerski.waypointsplus.fabric.remote.RemoteTopDonate;
+import pl.slogerski.waypointsplus.fabric.remote.TopDonateEntry;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+
+final class WaypointSettingsScreen extends Screen {
+    private static final int FIELD_ACCENT = 0xFFC43D9D;
+    private final Screen parent;
+    private final int requestedProfileIndex;
+    private final Session session;
+    private Button saveButton;
+    private RemoteContentSession<RemoteTopDonate> topDonateSession;
+    private RemoteTopDonate topDonate = RemoteTopDonate.EMPTY;
+    private boolean topDonateOpened;
+    private boolean topDonateExpanded;
+    private int left, top;
+    private int profileIndex;
+    private String profileName = "Default";
+    private boolean virtualProfile;
+
+    WaypointSettingsScreen(Screen parent) {
+        this(parent, -1, new Session());
+    }
+
+    private WaypointSettingsScreen(Screen parent, int profileIndex, Session session) {
+        super(Component.literal(UiText.get("Waypoint Settings", "Ustawienia waypointów")));
+        this.parent = parent;
+        this.requestedProfileIndex = profileIndex;
+        this.session = session;
+    }
+
+    @Override protected void init() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        topDonateExpanded = settings.topDonateExpanded;
+        WaypointConfigStore store = WaypointsPlusClient.config();
+        String serverKey = ServerScope.current();
+        java.util.List<String> profiles = store.profiles(serverKey);
+        profileIndex = requestedProfileIndex < 0 ? store.activeProfileIndex(serverKey)
+                : Math.max(0, Math.min(requestedProfileIndex, profiles.size()));
+        virtualProfile = profileIndex == profiles.size();
+        profileName = virtualProfile ? UiText.get("New Profile", "Nowy profil") : profiles.get(profileIndex);
+        left = width / 2 - 150;
+        top = Math.max(5, (height - (virtualProfile ? 240 : 252)) / 2);
+        if (hasTopDonatePanelSpace()) {
+            if (topDonateExpanded) openTopDonate(false);
+            else closeTopDonate();
+            String heading = UiText.get("Top Supporters", "Topka wspierających");
+            addRenderableWidget(Button.builder(
+                    Component.literal(topDonateExpanded ? "△" : "▽"), b -> {
+                        toggleTopDonate();
+                        b.setMessage(Component.literal(topDonateExpanded ? "△" : "▽"));
+                    }).pos(left + 307 + font.width(heading), top + 5).size(14, 14).build());
+        } else closeTopDonate();
+        addRenderableWidget(Button.builder(Component.literal("<"), b -> openProfile(profileIndex - 1, profiles.size(), serverKey))
+                .pos(width / 2 - 125, top + 27).size(28, 20).build()).active = profileIndex > 0;
+        addRenderableWidget(Button.builder(Component.literal(">"), b -> openProfile(profileIndex + 1, profiles.size(), serverKey))
+                .pos(width / 2 + 97, top + 27).size(28, 20).build()).active = profileIndex < profiles.size();
+        if (virtualProfile) {
+            addRenderableWidget(Button.builder(Component.literal(UiText.get("Add Profile", "Dodaj profil")),
+                    b -> minecraft.gui.setScreen(new ProfileNameScreen(this, parent)))
+                    .pos(left + 35, top + 72).size(230, 20).build());
+            addRenderableWidget(Button.builder(Component.literal(UiText.get("Exit", "Wyjdź")), b -> onClose())
+                    .pos(left + 82, top + 112).size(136, 20).build());
+            return;
+        }
+        Button edit = addRenderableWidget(Button.builder(Component.literal(UiText.get("Edit", "Edytuj")),
+                b -> openProfileEditor())
+                .pos(left + 10, top + 52).size(136, 20).build());
+        Button remove = addRenderableWidget(Button.builder(Component.literal(UiText.get("Remove", "Usuń")),
+                b -> {
+                    applyFields();
+                    confirmRemoveProfile(serverKey);
+                })
+                .pos(left + 154, top + 52).size(136, 20).build());
+        edit.active = remove.active = !"Default".equals(profileName);
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Language: English", "Język: polski")), b -> {
+            applyFields();
+            settings.language = "pl".equals(settings.language) ? "en" : "pl";
+            markDirty();
+            minecraft.gui.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
+        }).pos(left + 10, top + 84).size(280, 20).build());
+        addToggle(left + 10, top + 108, 136, UiText.get("Background", "Tło"), settings.background, v -> settings.background = v);
+        addToggle(left + 154, top + 108, 136, UiText.get("Coordinates", "Koordynaty"), settings.showCoordinates, v -> settings.showCoordinates = v);
+        addToggle(left + 10, top + 132, 136, UiText.get("Distance", "Odległość"), settings.showDistance, v -> settings.showDistance = v);
+        addToggle(left + 154, top + 132, 136, UiText.get("Laser", "Laser"), settings.laserEnabled, v -> settings.laserEnabled = v);
+
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Advanced Settings", "Ustawienia zaawansowane")),
+                b -> openAdvancedSettings())
+                .pos(left + 10, top + 168).size(280, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("About", "O modzie")),
+                b -> openAbout())
+                .pos(left + 10, top + 192).size(280, 20).build());
+        saveButton = addRenderableWidget(Button.builder(saveLabel(), b -> save())
+                .pos(left + 10, top + 216).size(136, 20).build());
+        saveButton.active = session.dirty;
+        addRenderableWidget(Button.builder(Component.literal(UiText.get("Exit", "Wyjdź")), b -> onClose())
+                .pos(left + 154, top + 216).size(136, 20).build());
+    }
+
+    private void openProfile(int index, int size, String serverKey) {
+        applyFields();
+        if (index < size) WaypointsPlusClient.config().selectProfile(serverKey, index);
+        minecraft.gui.setScreen(new WaypointSettingsScreen(parent, index, session));
+    }
+
+    private void confirmRemoveProfile(String serverKey) {
+        minecraft.gui.setScreen(new ConfirmScreen(confirmed -> {
+            if (confirmed) WaypointsPlusClient.config().removeProfile(serverKey, profileName);
+            minecraft.gui.setScreen(this);
+        }, Component.literal(UiText.get("Remove Profile?", "Usunąć profil?")),
+                Component.literal(UiText.get("Its waypoints will also be deleted.", "Jego waypointy również zostaną usunięte."))) {
+            @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+                if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                        WaypointsPlusClient.config().settings().menuBackground)) {
+                    super.extractBackground(graphics, mouseX, mouseY, delta);
+                }
+            }
+        });
+    }
+
+    private void addToggle(int x, int y, int width, String name, boolean value, Setter setter) {
+        addRenderableWidget(Button.builder(Component.literal(name + ": " + (value ? "ON" : "OFF")), b -> {
+            applyFields();
+            setter.set(!value);
+            markDirty();
+            minecraft.gui.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
+        }).pos(x, y).size(width, 20).build());
+    }
+
+    void save() {
+        applyFields();
+        saveAdvanced();
+    }
+
+    void saveAdvanced() {
+        WaypointsPlusClient.config().saveSettings();
+        session.saved();
+        updateSaveButton();
+    }
+
+    private void openAdvancedSettings() {
+        applyFields();
+        minecraft.gui.setScreen(new AdvancedSettingsScreen(this));
+    }
+
+    private void openProfileEditor() {
+        applyFields();
+        minecraft.gui.setScreen(new ProfileNameScreen(this, parent, profileName));
+    }
+
+    private void openAbout() {
+        applyFields();
+        minecraft.gui.setScreen(new AboutScreen(this));
+    }
+
+    private void applyFields() {
+    }
+
+    void markDirty() {
+        session.dirty = true;
+        updateSaveButton();
+    }
+
+    boolean hasUnsavedChanges() {
+        return session.dirty;
+    }
+
+    private Component saveLabel() {
+        return Component.literal(session.dirty
+                ? UiText.get("Not Saved", "Niezapisane")
+                : UiText.get("Saved", "Zapisano"));
+    }
+
+    private void updateSaveButton() {
+        if (saveButton == null) return;
+        saveButton.setMessage(saveLabel());
+        saveButton.active = session.dirty;
+    }
+
+    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.extractBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
+
+    @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+        int bottom = virtualProfile ? top + 150 : top + 250;
+        GuiPalette.panel(graphics, left, top, left + 300, bottom);
+        if (hasTopDonatePanelSpace()) drawTopDonate(graphics);
+        super.extractRenderState(graphics, mouseX, mouseY, delta);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(width / 2.0f, top + 7.0f);
+        graphics.pose().scale(1.2f, 1.2f);
+        graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
+        graphics.pose().popMatrix();
+        graphics.centeredText(font, Component.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
+        if (virtualProfile) return;
+    }
+
+    private boolean hasTopDonatePanelSpace() {
+        return left + 303 + 120 <= width - 5;
+    }
+
+    private void drawTopDonate(GuiGraphicsExtractor graphics) {
+        int panelLeft = left + 303;
+        int panelTop = top;
+        graphics.text(font, Component.literal(UiText.get("Top Supporters", "Topka wspierających")),
+                panelLeft, panelTop + 8, 0xFF039E00, true);
+        if (!topDonateExpanded) return;
+        java.util.List<TopDonateEntry> entries = topDonate.entries();
+        if (entries.isEmpty()) {
+            graphics.text(font, Component.literal(UiText.get("No data", "Brak danych")),
+                    panelLeft, panelTop + 30, 0xED454843, true);
+            return;
+        }
+        int y = panelTop + 30;
+        for (int index = 0; index < Math.min(8, entries.size()); index++) {
+            TopDonateEntry entry = entries.get(index);
+            String rank = "#" + (index + 1) + " ";
+            String donor = compactDonateText(entry.name(), 12) + ": ";
+            String amount = compactDonateText(entry.formattedAmount(), 12);
+            int rankColor = index == 0 ? 0xFFFFD700 : index == 1 ? 0xFFC0C0C0 : index == 2 ? 0xFFCD7F32 : 0xFF858B94;
+            int donorX = panelLeft + font.width(rank);
+            int amountX = donorX + font.width(donor);
+            graphics.text(font, rank, panelLeft, y, rankColor, true);
+            graphics.text(font, donor, donorX, y, entry.colorArgb(), true);
+            graphics.text(font, amount, amountX, y, 0xFF0BFA07, true);
+            y += 14;
+        }
+    }
+
+    private static String compactDonateText(String text, int length) {
+        return text.length() > length ? text.substring(0, length - 1) + "…" : text;
+    }
+
+    private void toggleTopDonate() {
+        topDonateExpanded = !topDonateExpanded;
+        persistTopDonateState();
+        if (topDonateExpanded) openTopDonate(true);
+        else closeTopDonate();
+    }
+
+    private void persistTopDonateState() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        WaypointSettingsSnapshot current = WaypointSettingsSnapshot.capture(settings);
+        session.baseline.restore(settings);
+        settings.topDonateExpanded = topDonateExpanded;
+        WaypointsPlusClient.config().saveSettings();
+        current.restore(settings);
+        settings.topDonateExpanded = topDonateExpanded;
+    }
+
+    private void openTopDonate(boolean forceRefresh) {
+        if (topDonateOpened) return;
+        topDonateOpened = true;
+        RemoteContentSession<RemoteTopDonate> opened =
+                RemoteContentService.getDefault().openTopDonate(forceRefresh);
+        topDonateSession = opened;
+        topDonate = opened.snapshot();
+        Minecraft minecraft = Minecraft.getInstance();
+        opened.refresh().thenAccept(snapshot -> minecraft.execute(() -> {
+            if (minecraft.gui.screen() == this && topDonateSession == opened) topDonate = snapshot;
+        }));
+    }
+
+    private void closeTopDonate() {
+        if (topDonateSession != null) topDonateSession.close();
+        topDonateSession = null;
+        topDonate = RemoteTopDonate.EMPTY;
+        topDonateOpened = false;
+    }
+
+    static void fieldBox(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
+        roundedFill(graphics, x, y, x + width, y + height, 0xA0000000);
+        graphics.fill(x + 2, y, x + width - 2, y + 1, FIELD_ACCENT);
+        graphics.fill(x + 2, y + height - 1, x + width - 2, y + height, FIELD_ACCENT);
+        graphics.fill(x, y + 2, x + 1, y + height - 2, FIELD_ACCENT);
+        graphics.fill(x + width - 1, y + 2, x + width, y + height - 2, FIELD_ACCENT);
+        graphics.fill(x + 1, y + 1, x + 2, y + 2, FIELD_ACCENT);
+        graphics.fill(x + width - 2, y + 1, x + width - 1, y + 2, FIELD_ACCENT);
+        graphics.fill(x + 1, y + height - 2, x + 2, y + height - 1, FIELD_ACCENT);
+        graphics.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, FIELD_ACCENT);
+    }
+
+    private static void roundedFill(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int color) {
+        graphics.fill(left + 2, top, right - 2, bottom, color);
+        graphics.fill(left, top + 2, right, bottom - 2, color);
+    }
+
+    @Override public void removed() {
+        closeTopDonate();
+        super.removed();
+    }
+
+    @Override public void onClose() {
+        if (session.dirty) session.baseline.restore(WaypointsPlusClient.config().settings());
+        Minecraft.getInstance().gui.setScreen(parent);
+    }
+    private static final class Session {
+        private WaypointSettingsSnapshot baseline =
+                WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
+        private boolean dirty;
+
+        private void saved() {
+            baseline = WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
+            dirty = false;
+        }
+    }
+    @FunctionalInterface private interface Setter { void set(boolean value); }
+}

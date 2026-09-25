@@ -114,7 +114,7 @@ Coordinates and distance can be hidden independently. Turn them off when you do 
 
 ## Supported versions
 
-`1.19.2` · `1.20.1` · `1.20.6` · `1.21.1` · `1.21.2–1.21.4` · `1.21.5` · `1.21.6` · `1.21.8` · `1.21.10` · `1.21.11` · `26.1.2` · `26.2`
+`1.19.2` · `1.20.1` · `1.20.6` · `1.21.1` · `1.21.2–1.21.4` · `1.21.5` · `1.21.6` · `1.21.8` · `1.21.10` · `1.21.11` · `26.1.2` · `26.2` · `26.3`
 
 Install the JAR marked for your Minecraft version, together with [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth.com/mod/fabric-api).
 

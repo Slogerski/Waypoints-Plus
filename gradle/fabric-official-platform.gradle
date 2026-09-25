@@ -14,7 +14,8 @@ def javaVersion = platformSpec.java as Integer
 def fabricLoaderVersion = platformSpec.fabricLoader as String
 def codeFamilies = [
     "26.1.2": "official-26.1",
-    "26.2": "official-26.2"
+    "26.2": "official-26.2",
+    "26.3": "official-26.2"
 ]
 if (!codeFamilies.containsKey(platformSpec.id)) {
     throw new GradleException("No explicit code family for ${platformSpec.id}")

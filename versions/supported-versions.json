@@ -164,12 +164,13 @@
       "project": "fabric-26.3",
       "directory": "platforms/fabric/26.3",
       "gameVersions": ["26.3"],
+      "minecraft": "26.3",
       "java": 25,
+      "fabricLoader": "0.19.3",
       "mappingType": "official",
-      "fabricApi": null,
+      "fabricApi": "0.160.5+26.3",
       "artifactTask": "jar",
-      "status": "blocked",
-      "blockedReason": "Minecraft 26.3 is not present in the official Mojang manifest or Fabric game-version list."
+      "status": "active"
     }
   ]
 }
