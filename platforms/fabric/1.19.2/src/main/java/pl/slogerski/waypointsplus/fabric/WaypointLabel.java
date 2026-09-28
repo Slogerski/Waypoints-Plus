@@ -12,6 +12,8 @@ final class WaypointLabel {
     private final Integer waypointColor;
     private final String coordinates;
     private final WaypointPreset preset;
+    private final boolean classic;
+    private final WaypointPresetLayout layout;
     private final Text[] text;
     private final int[] widths;
     private final boolean[] enabled;
@@ -34,8 +36,10 @@ final class WaypointLabel {
         this.waypoint = waypoint;
         waypointColor = parseArgb(waypoint.colorArgb());
         this.preset = preset;
+        classic = preset == null || WaypointPreset.DEFAULT_ICON_ID.equals(preset.id);
+        layout = classic ? null : new WaypointPresetLayout();
         coordinates = Math.round(x) + " " + Math.round(y) + " " + Math.round(z);
-        int count = preset == null ? 1 : 4;
+        int count = classic ? 1 : 4;
         text = new Text[count]; widths = new int[count]; enabled = new boolean[count];
         textMatrices = new Matrix4f[count];
         for (int i = 0; i < count; i++) textMatrices[i] = new Matrix4f();
@@ -60,7 +64,7 @@ final class WaypointLabel {
         }
         showDistance = settings.showDistance; showCoordinates = settings.showCoordinates;
         polish = "pl".equals(settings.language);
-        boolean wantsDistance = showDistance && (preset == null || preset.distance.enabled);
+        boolean wantsDistance = showDistance && (classic || preset.distance.enabled);
         if (wantsDistance) {
             boolean km = distance >= 1000;
             long bucket = Math.round(km ? distance / 100 : distance);
@@ -74,7 +78,7 @@ final class WaypointLabel {
         float oldLeft = left, oldTop = top, oldRight = right, oldBottom = bottom;
         boolean first = !initialized;
         initialized = true;
-        if (preset == null) {
+        if (classic) {
             String label = waypoint.name();
             if (showDistance) label += "  •  " + distanceText;
             if (showCoordinates) label += "  " + coordinates;
@@ -83,31 +87,31 @@ final class WaypointLabel {
             left = -widths[0] / 2.0f - 3; top = -7;
             right = widths[0] / 2.0f + 3; bottom = 8;
             textMatrices[0].identity().translate(-widths[0] / 2.0f, -3, 0);
+            contentRadius = 0;
+            if (preset != null && preset.icon) {
+                includeContent(iconX(), iconY(), iconX() + 16, iconY() + 16);
+            }
         } else {
             setText(renderer, 0, waypoint.name()); setText(renderer, 1, distanceText);
             setText(renderer, 2, coordinates); setText(renderer, 3, waypoint.profile());
-            left = top = Float.POSITIVE_INFINITY; right = bottom = Float.NEGATIVE_INFINITY;
             contentRadius = 0;
             for (int i = 0; i < 4; i++) {
                 WaypointPreset.TextPart part = part(i);
                 enabled[i] = part.enabled && (i != 1 || showDistance) && (i != 2 || showCoordinates);
-                if (!enabled[i]) continue;
                 float width = widths[i] * part.scale;
-                float l = part.x - width / 2, r = part.x + width / 2;
-                float b = part.y + renderer.fontHeight * part.scale;
-                includeContent(l, part.y, r, b);
-                if (preset.linked(i)) include(l, part.y, r, b);
-                textMatrices[i].identity().translate(part.x, part.y, 0).scale(part.scale, part.scale, 1)
+                layout.set(i, part.x - width / 2, part.y, width, renderer.fontHeight * part.scale, enabled[i]);
+            }
+            layout.set(4, preset.iconX, preset.iconY, 16 * preset.iconScale, 16 * preset.iconScale, preset.icon);
+            layout.resolve(preset);
+            left = layout.left(5); top = layout.top(5); right = layout.right(5); bottom = layout.bottom(5);
+            for (int i = 0; i < 4; i++) {
+                if (!enabled[i]) continue;
+                WaypointPreset.TextPart part = part(i);
+                includeContent(layout.left(i), layout.top(i), layout.right(i), layout.bottom(i));
+                textMatrices[i].identity().translate(layout.centerX(i), layout.top(i), 0).scale(part.scale, part.scale, 1)
                         .translate(-widths[i] / 2.0f, 0, 0);
             }
-            if (preset.icon) {
-                float r = preset.iconX + 16 * preset.iconScale, b = preset.iconY + 16 * preset.iconScale;
-                includeContent(preset.iconX, preset.iconY, r, b);
-                if (preset.iconLinked) include(preset.iconX, preset.iconY, r, b);
-            }
-            if (!Float.isFinite(left)) { left = -20; top = -5; right = 20; bottom = 5; }
-            left = (float) Math.floor(left - preset.padding); top = (float) Math.floor(top - preset.padding);
-            right = (float) Math.ceil(right + preset.padding); bottom = (float) Math.ceil(bottom + preset.padding);
+            if (preset.icon) includeContent(layout.left(4), layout.top(4), layout.right(4), layout.bottom(4));
         }
         if (first || oldLeft != left || oldTop != top || oldRight != right || oldBottom != bottom) {
             buildPanel();
@@ -124,6 +128,8 @@ final class WaypointLabel {
     float top() { return top; }
     float right() { return right; }
     float bottom() { return bottom; }
+    float iconX() { return classic ? left - 20 : layout.left(4); }
+    float iconY() { return classic ? (top + bottom - 16) / 2 : layout.top(4); }
 
     private void setText(TextRenderer renderer, int index, String value) {
         if (text[index] != null && text[index].getString().equals(value)) return;
@@ -139,10 +145,6 @@ final class WaypointLabel {
     private void includeContent(float l, float t, float r, float b) {
         contentRadius = Math.max(contentRadius,
                 Math.max(Math.max(Math.abs(l), Math.abs(r)), Math.max(Math.abs(t), Math.abs(b))));
-    }
-
-    private void include(float l, float t, float r, float b) {
-        left = Math.min(left, l); top = Math.min(top, t); right = Math.max(right, r); bottom = Math.max(bottom, b);
     }
 
     void drawPanel(net.minecraft.client.render.BufferBuilder vertices) {
@@ -168,7 +170,7 @@ final class WaypointLabel {
 
     private void buildPanel() {
         java.util.ArrayList<PanelQuad> quads = new java.util.ArrayList<>(16);
-        if (preset != null) {
+        if (!classic) {
             buildPresetPanel(quads);
             panels = quads.toArray(PanelQuad[]::new);
             return;

@@ -29,7 +29,7 @@ final class WaypointPresetStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("waypointsplus/presets.json");
     private static final int MAX_FILE_SIZE = 4 * 1024 * 1024;
-    private static final int MAX_PRESETS = 66;
+    private static final int MAX_PRESETS = 67;
     private static final List<WaypointPreset> PRESETS = new ArrayList<>();
     private static final Map<UUID, String> ASSIGNMENTS = new HashMap<>();
     private static final Map<UUID, String> ITEMS = new HashMap<>();
@@ -110,6 +110,11 @@ final class WaypointPresetStore {
         defaults.name = "Default";
         defaults.favorite = WaypointsPlusClient.config().settings().defaultPresetFavorite;
         result.add(defaults);
+        WaypointPreset defaultIcon = find(WaypointPreset.DEFAULT_ICON_ID);
+        if (defaultIcon != null) {
+            defaultIcon.name = UiText.get("Default + Icon", "Domyślny + ikona");
+            result.add(defaultIcon);
+        }
         WaypointPreset singleIcon = find(WaypointPreset.SINGLE_ICON_ID);
         if (singleIcon != null) result.add(singleIcon);
         WaypointPreset designed = find(WaypointPreset.DESIGNED_ID);
@@ -196,6 +201,7 @@ final class WaypointPresetStore {
     private static void load() {
         if (loaded) return;
         loaded = true;
+        PRESETS.add(WaypointPreset.defaultIcon());
         PRESETS.add(WaypointPreset.singleIcon());
         PRESETS.add(WaypointPreset.designed());
         if (!Files.exists(FILE)) return;
@@ -223,11 +229,17 @@ final class WaypointPresetStore {
             for (int i = 0; i < PRESETS.size(); i++) {
                 WaypointPreset preset = PRESETS.get(i);
                 if (WaypointPreset.builtIn(preset.id)) {
-                    WaypointPreset current = WaypointPreset.SINGLE_ICON_ID.equals(preset.id)
+                    WaypointPreset current = WaypointPreset.DEFAULT_ICON_ID.equals(preset.id)
+                            ? WaypointPreset.defaultIcon() : WaypointPreset.SINGLE_ICON_ID.equals(preset.id)
                             ? WaypointPreset.singleIcon() : WaypointPreset.designed();
                     current.favorite = preset.favorite;
                     PRESETS.set(i, current);
                 }
+            }
+            if (!ids.contains(WaypointPreset.DEFAULT_ICON_ID)) {
+                if (PRESETS.size() >= MAX_PRESETS) throw new IllegalArgumentException();
+                PRESETS.add(WaypointPreset.defaultIcon());
+                ids.add(WaypointPreset.DEFAULT_ICON_ID);
             }
             if (!ids.contains(WaypointPreset.SINGLE_ICON_ID)) {
                 if (PRESETS.size() >= MAX_PRESETS) throw new IllegalArgumentException();
@@ -257,6 +269,7 @@ final class WaypointPresetStore {
             }
         } catch (IOException | RuntimeException exception) {
             PRESETS.clear();
+            PRESETS.add(WaypointPreset.defaultIcon());
             PRESETS.add(WaypointPreset.singleIcon());
             PRESETS.add(WaypointPreset.designed());
             ASSIGNMENTS.clear();
@@ -268,6 +281,11 @@ final class WaypointPresetStore {
 
     private static boolean write(List<WaypointPreset> presets, Map<UUID, String> assignments) {
         return write(presets, assignments, ITEMS);
+    }
+
+    static boolean itemExists(String item) {
+        Identifier id = item == null ? null : Identifier.tryParse(item);
+        return id != null && Registries.ITEM.containsId(id);
     }
 
     static boolean validItem(String item) {

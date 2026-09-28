@@ -48,7 +48,7 @@ final class WaypointPresetTransfer {
         if (root.has("presets")) {
             if (!root.get("presets").isJsonObject()) throw new IllegalArgumentException();
             JsonObject presets = root.getAsJsonObject("presets");
-            if (presets.size() > 66) throw new IllegalArgumentException();
+            if (presets.size() > 67) throw new IllegalArgumentException();
             for (var entry : presets.entrySet()) {
                 String name = string(entry.getValue());
                 if (!validId(entry.getKey()) || name.isBlank() || name.length() > 64
@@ -65,7 +65,7 @@ final class WaypointPresetTransfer {
             if (item.length() > 256) throw new IllegalArgumentException();
             if (!item.isEmpty() && !WaypointPresetStore.validItem(item)) item = "";
             if (!"default".equals(preset)) names.putIfAbsent(preset, preset);
-            if (names.size() > 66) throw new IllegalArgumentException();
+            if (names.size() > 67) throw new IllegalArgumentException();
             selections.add(new WaypointPresetStore.Selection(preset, item));
         }
         return new Payload(entries, List.copyOf(selections), Map.copyOf(names));

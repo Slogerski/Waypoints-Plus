@@ -20,7 +20,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 final class WaypointPresetEditorScreen extends AlertScreen {
-    private static final int PROPERTY_HEIGHT = 614;
+    private static final int PROPERTY_HEIGHT = 754;
     private static final float MIN_ZOOM = 0.5f;
     private final Screen parent;
     private WaypointPreset draft;
@@ -41,6 +41,7 @@ final class WaypointPresetEditorScreen extends AlertScreen {
     private float previewCenterX, previewCenterY;
     private int selectedPart;
     private int draggedPart = -1;
+    private int selectedEdge = -1;
     private boolean panning, draggingScrollbar;
     private String notice = "";
 
@@ -67,6 +68,7 @@ final class WaypointPresetEditorScreen extends AlertScreen {
         canvasBottom = propertyBottom;
         if (preview != null) preview.close();
         preview = new WaypointPresetPreview(draft, font);
+        if (!preview.enabled(selectedPart)) selectedEdge = -1;
         if (!viewInitialized) {
             WaypointPresetPreview.Bounds bounds = preview.contentBounds();
             zoom = Math.max(MIN_ZOOM, Math.min(3, Math.min(
@@ -103,56 +105,107 @@ final class WaypointPresetEditorScreen extends AlertScreen {
     }
 
     private void buildProperties() {
-        heading(UiText.get("Text", "Tekst"), 2);
+        buildAnchors();
+        heading(UiText.get("Text", "Tekst"), 142);
         for (int i = 0; i < 4; i++) {
             int index = i;
             WaypointPreset.TextPart part = preview.part(i);
             String name = partName(i);
-            checkbox(21 + i * 22, part.enabled, () -> part.enabled = !part.enabled);
+            checkbox(161 + i * 22, part.enabled, () -> part.enabled = !part.enabled);
             property(Button.builder(Component.literal((selectedPart == i ? "> " : "") + name), button -> {
                 selectedPart = index;
+                selectedEdge = -1;
                 rebuildWidgets();
-            }).pos(propertyLeft + 23, 0).size(116, 16).build(), 21 + i * 22);
+            }).pos(propertyLeft + 23, 0).size(116, 16).build(), 161 + i * 22);
         }
-        positionFields(128, false);
-        heading(UiText.get("Icon", "Ikona"), 155);
-        checkbox(174, draft.icon, () -> draft.icon = !draft.icon);
+        positionFields(268, false);
+        heading(UiText.get("Icon", "Ikona"), 295);
+        checkbox(314, draft.icon, () -> draft.icon = !draft.icon);
         property(Button.builder(Component.literal((selectedPart == 4 ? "> " : "") + UiText.get("Icon", "Ikona")), button -> {
             selectedPart = 4;
+            selectedEdge = -1;
             rebuildWidgets();
-        }).pos(propertyLeft + 23, 0).size(116, 16).build(), 174);
+        }).pos(propertyLeft + 23, 0).size(116, 16).build(), 314);
         property(Button.builder(Component.literal((draft.pngIcon ? "" : "> ") + UiText.get("Item", "Przedmiot")), button -> {
             minecraft.setScreen(new PresetItemScreen(this, id -> {
                 draft.item = id;
                 draft.icon = true;
                 draft.pngIcon = false;
             }));
-        }).pos(propertyLeft + 4, 0).size(135, 18).build(), 196);
+        }).pos(propertyLeft + 4, 0).size(135, 18).build(), 336);
         Button pngChoice = Button.builder(Component.literal((draft.pngIcon ? "> " : "") + "PNG"), button -> {
             draft.pngIcon = true;
             draft.icon = true;
             rebuildWidgets();
         }).pos(propertyLeft + 4, 0).size(55, 18).build();
         pngChoice.active = !draft.png.isEmpty();
-        property(pngChoice, 219);
+        property(pngChoice, 359);
         property(Button.builder(Component.literal(UiText.get("Upload", "Wgraj")), button -> uploadPng())
-                .pos(propertyLeft + 64, 0).size(75, 18).build(), 219);
-        labels.add(new PropertyLabel("16×16 / 32×32 / 64×64", 242, 0xFFAAAAAA));
-        positionFields(268, true);
-        heading(UiText.get("Other", "Pozostałe"), 300);
-        labeledCheckbox(320, UiText.get("Corners", "Narożniki"), draft.corners, () -> draft.corners = !draft.corners);
-        labeledCheckbox(342, UiText.get("Border", "Ramka"), draft.border, () -> draft.border = !draft.border);
-        labeledCheckbox(364, UiText.get("Background", "Tło"), draft.background, () -> draft.background = !draft.background);
-        labels.add(new PropertyLabel(UiText.get("Border Size", "Grubość ramki"), 390, 0xFFAAAAAA));
-        numberField(propertyLeft + 4, 405, 135, draft.borderSize, value -> WaypointPreset.range(value, 0.5f, 8), value -> draft.borderSize = value);
-        labels.add(new PropertyLabel(UiText.get("Padding", "Odstęp tła"), 434, 0xFFAAAAAA));
-        numberField(propertyLeft + 4, 449, 135, draft.padding, value -> WaypointPreset.range(value, 0, 32), value -> draft.padding = value);
-        heading(UiText.get("Fit Background To", "Dopasuj tło do"), 480);
+                .pos(propertyLeft + 64, 0).size(75, 18).build(), 359);
+        labels.add(new PropertyLabel("16×16 / 32×32 / 64×64", 382, 0xFFAAAAAA));
+        positionFields(408, true);
+        heading(UiText.get("Other", "Pozostałe"), 440);
+        labeledCheckbox(460, UiText.get("Corners", "Narożniki"), draft.corners, () -> draft.corners = !draft.corners);
+        labeledCheckbox(482, UiText.get("Border", "Ramka"), draft.border, () -> draft.border = !draft.border);
+        labeledCheckbox(504, UiText.get("Background", "Tło"), draft.background, () -> draft.background = !draft.background);
+        labels.add(new PropertyLabel(UiText.get("Border Size", "Grubość ramki"), 530, 0xFFAAAAAA));
+        numberField(propertyLeft + 4, 545, 135, draft.borderSize, value -> WaypointPreset.range(value, 0.5f, 8), value -> draft.borderSize = value);
+        labels.add(new PropertyLabel(UiText.get("Padding", "Odstęp tła"), 574, 0xFFAAAAAA));
+        numberField(propertyLeft + 4, 589, 135, draft.padding, value -> WaypointPreset.range(value, 0, 32), value -> draft.padding = value);
+        heading(UiText.get("Fit Background To", "Dopasuj tło do"), 620);
         for (int i = 0; i < 5; i++) {
             int index = i;
-            labeledCheckbox(499 + i * 22, i == 4 ? UiText.get("Icon", "Ikona") : partName(i),
-                    draft.linked(i), () -> draft.toggleLinked(index));
+            labeledCheckbox(639 + i * 22, i == 4 ? UiText.get("Icon", "Ikona") : partName(i),
+                    draft.linked(i), () -> {
+                        draft.toggleLinked(index);
+                        if (!WaypointPresetLayout.valid(draft)) {
+                            draft.toggleLinked(index);
+                            notice = UiText.get("Detach the edge first to avoid a circular link.", "Najpierw odłącz krawędź, aby uniknąć zapętlenia.");
+                        }
+                    });
         }
+    }
+
+    private void buildAnchors() {
+        heading(UiText.get("Attach Edges", "Przyklej krawędzie"), 2);
+        labels.add(new PropertyLabel(partName(selectedPart), 16, 0xFF97C89D));
+        for (int edge = 0; edge < 4; edge++) {
+            int side = edge;
+            Button choice = Button.builder(Component.literal((selectedEdge == edge ? "> " : "") + edgeName(edge)), pressed -> {
+                selectedEdge = selectedEdge == side ? -1 : side;
+                notice = selectedEdge < 0 ? "" : UiText.get("Click a green target edge. Right-click cancels.",
+                        "Kliknij zieloną krawędź docelową. Prawy przycisk anuluje.");
+                rebuildWidgets();
+            }).pos(propertyLeft + 4 + (edge % 2) * 70, 0).size(65, 18).build();
+            choice.active = preview.enabled(selectedPart);
+            property(choice, 30 + (edge / 2) * 22);
+        }
+        for (int axis = 0; axis < 2; axis++) {
+            int direction = axis;
+            Button detach = Button.builder(Component.literal(UiText.get("Detach ", "Odłącz ") + (axis == 0 ? "X" : "Y")), pressed -> {
+                boolean detached = preview.layout().detach(draft, selectedPart, direction);
+                selectedEdge = -1;
+                notice = detached ? "" : UiText.get("Move the element closer before detaching.",
+                        "Przesuń element bliżej przed odłączeniem.");
+                rebuildWidgets();
+            }).pos(propertyLeft + 4 + axis * 70, 0).size(65, 18).build();
+            detach.active = draft.anchor(selectedPart, axis) != null;
+            property(detach, 76);
+            WaypointPreset.Anchor anchor = draft.anchor(selectedPart, axis);
+            String relation = anchor == null ? UiText.get("Independent", "Niezależny")
+                    : partName(anchor.target) + "." + edgeName(anchor.edge);
+            labels.add(new PropertyLabel((axis == 0 ? "X: " : "Y: ") + relation, 100 + axis * 12, 0xFFAAAAAA));
+        }
+        labels.add(new PropertyLabel(UiText.get("X* / Y* = gap", "X* / Y* = odstęp"), 127, 0xFF97C89D));
+    }
+
+    private String edgeName(int edge) {
+        return switch (edge) {
+            case 0 -> UiText.get("Left", "Lewa");
+            case 1 -> UiText.get("Right", "Prawa");
+            case 2 -> UiText.get("Top", "Góra");
+            default -> UiText.get("Bottom", "Dół");
+        };
     }
 
     private String partName(int index) {
@@ -160,7 +213,9 @@ final class WaypointPresetEditorScreen extends AlertScreen {
             case 0 -> UiText.get("Name", "Nazwa");
             case 1 -> UiText.get("Distance", "Odległość");
             case 2 -> UiText.get("Coords", "Koordynaty");
-            default -> UiText.get("Profile", "Profil");
+            case 3 -> UiText.get("Profile", "Profil");
+            case 4 -> UiText.get("Icon", "Ikona");
+            default -> UiText.get("Border", "Ramka");
         };
     }
 
@@ -177,16 +232,16 @@ final class WaypointPresetEditorScreen extends AlertScreen {
     }
 
     private void positionFields(int y, boolean icon) {
-        WaypointPreset.TextPart part = preview.part(Math.min(3, selectedPart));
-        boolean editsIcon = icon || selectedPart == 4;
-        numberField(propertyLeft + 4, y, 39, editsIcon ? draft.iconX : part.x, WaypointPreset::position,
-                value -> { if (editsIcon) draft.iconX = value; else part.x = value; });
-        numberField(propertyLeft + 47, y, 39, editsIcon ? draft.iconY : part.y, WaypointPreset::position,
-                value -> { if (editsIcon) draft.iconY = value; else part.y = value; });
-        numberField(propertyLeft + 90, y, 49, editsIcon ? draft.iconScale : part.scale, WaypointPreset::scale,
-                value -> { if (editsIcon) draft.iconScale = value; else part.scale = value; });
-        labels.add(new PropertyLabel("X", y - 10, 0xFF999999, 4));
-        labels.add(new PropertyLabel("Y", y - 10, 0xFF999999, 47));
+        int index = icon ? 4 : selectedPart;
+        WaypointPreset.TextPart part = preview.part(Math.min(3, index));
+        numberField(propertyLeft + 4, y, 39, WaypointPresetLayout.position(draft, index, 0), WaypointPreset::position,
+                value -> WaypointPresetLayout.position(draft, index, 0, value));
+        numberField(propertyLeft + 47, y, 39, WaypointPresetLayout.position(draft, index, 1), WaypointPreset::position,
+                value -> WaypointPresetLayout.position(draft, index, 1, value));
+        numberField(propertyLeft + 90, y, 49, index == 4 ? draft.iconScale : part.scale, WaypointPreset::scale,
+                value -> { if (index == 4) draft.iconScale = value; else part.scale = value; });
+        labels.add(new PropertyLabel(draft.anchor(index, 0) == null ? "X" : "X*", y - 10, 0xFF999999, 4));
+        labels.add(new PropertyLabel(draft.anchor(index, 1) == null ? "Y" : "Y*", y - 10, 0xFF999999, 47));
         labels.add(new PropertyLabel(UiText.get("Scale", "Skala"), y - 10, 0xFF999999, 90));
     }
 
@@ -244,6 +299,7 @@ final class WaypointPresetEditorScreen extends AlertScreen {
             WaypointPreset imported = WaypointPresetStore.importPreset(minecraft.keyboardHandler.getClipboard());
             imported.id = draft.id;
             draft = imported;
+            selectedEdge = -1;
             notice = UiText.get("Imported. Save to keep this preset.", "Zaimportowano. Zapisz, aby zachować szablon.");
             rebuildWidgets();
         } catch (RuntimeException exception) {
@@ -332,6 +388,7 @@ final class WaypointPresetEditorScreen extends AlertScreen {
         context.enableScissor(canvasLeft, canvasTop, canvasRight, canvasBottom);
         drawWorkspace(context);
         preview.draw(context, originX(), originY(), zoom, selectedPart);
+        drawAnchors(context, mouseX, mouseY);
         context.disableScissor();
         context.text(font, Math.round(zoom * 100) + "%", canvasLeft + 4, canvasBottom - 12, 0xFF999999);
         context.enableScissor(propertyLeft, propertyTop, panelRight - 10, propertyBottom);
@@ -351,10 +408,97 @@ final class WaypointPresetEditorScreen extends AlertScreen {
         if (!notice.isEmpty()) context.text(font, font.plainSubstrByWidth(notice, panelRight - panelLeft - 20), panelLeft + 8, panelBottom - 35, 0xFFCEB36F);
     }
 
+    private void drawAnchors(GuiGraphicsExtractor context, int mouseX, int mouseY) {
+        if (!preview.enabled(selectedPart)) return;
+        if (selectedEdge < 0) {
+            int hovered = sourceEdge(mouseX, mouseY);
+            if (hovered >= 0) {
+                drawEdge(context, preview.bounds(selectedPart), hovered, 0xA096E8A3);
+                String label = UiText.get("Attach: ", "Przyklej: ") + edgeName(hovered);
+                int labelX = Math.min(canvasRight - font.width(label) - 5, Math.max(canvasLeft + 4, mouseX + 6));
+                int labelY = Math.min(canvasBottom - 22, Math.max(canvasTop + 4, mouseY + 8));
+                context.text(font, label, labelX, labelY, 0xFFB9EFC1);
+            }
+            for (int axis = 0; axis < 2; axis++) {
+                WaypointPreset.Anchor anchor = draft.anchor(selectedPart, axis);
+                if (anchor == null || !preview.enabled(anchor.target)) continue;
+                drawEdge(context, preview.bounds(selectedPart), anchor.ownEdge, 0xB06FAD7B);
+                drawEdge(context, preview.bounds(anchor.target), anchor.edge, 0x706FAD7B);
+            }
+            return;
+        }
+        drawEdge(context, preview.bounds(selectedPart), selectedEdge, 0xEF96E8A3);
+        int hovered = targetEdge(mouseX, mouseY);
+        for (int target = 0; target <= 5; target++) {
+            if (!preview.enabled(target)) continue;
+            for (int edge = selectedEdge / 2 * 2; edge < selectedEdge / 2 * 2 + 2; edge++) {
+                if (!WaypointPresetLayout.canAttach(draft, selectedPart, selectedEdge, target, edge)) continue;
+                drawEdge(context, preview.bounds(target), edge, hovered == target * 4 + edge ? 0xEF96E8A3 : 0x706FAD7B);
+            }
+        }
+        if (hovered >= 0) {
+            String label = partName(hovered / 4) + ": " + edgeName(hovered % 4);
+            int labelX = Math.min(canvasRight - font.width(label) - 5, Math.max(canvasLeft + 4, mouseX + 6));
+            int labelY = Math.min(canvasBottom - 22, Math.max(canvasTop + 4, mouseY + 8));
+            context.text(font, label, labelX, labelY, 0xFFB9EFC1);
+        }
+    }
+
+    private void drawEdge(GuiGraphicsExtractor context, WaypointPresetPreview.Bounds bounds, int edge, int color) {
+        int left = Math.round(originX() + bounds.left() * zoom);
+        int right = Math.round(originX() + bounds.right() * zoom);
+        int top = Math.round(originY() + bounds.top() * zoom);
+        int bottom = Math.round(originY() + bounds.bottom() * zoom);
+        switch (edge) {
+            case 0 -> context.fill(left - 1, top, left + 1, bottom, color);
+            case 1 -> context.fill(right - 1, top, right + 1, bottom, color);
+            case 2 -> context.fill(left, top - 1, right, top + 1, color);
+            default -> context.fill(left, bottom - 1, right, bottom + 1, color);
+        }
+    }
+
+    private int sourceEdge(double x, double y) {
+        if (!inCanvas(x, y) || !preview.enabled(selectedPart)) return -1;
+        return preview.layout().sourceEdge(selectedPart, (x - originX()) / zoom, (y - originY()) / zoom, zoom);
+    }
+
+    private int targetEdge(double x, double y) {
+        if (selectedEdge < 0 || !inCanvas(x, y) || !preview.enabled(selectedPart)) return -1;
+        return preview.layout().targetEdge(draft, selectedPart, selectedEdge,
+                (x - originX()) / zoom, (y - originY()) / zoom, zoom);
+    }
+
     @Override protected boolean clickContent(double x, double y, int button) {
+        if (selectedEdge >= 0 && button == 1) {
+            selectedEdge = -1;
+            notice = "";
+            rebuildWidgets();
+            return true;
+        }
+        if (selectedEdge >= 0 && inCanvas(x, y) && button == 0) {
+            int target = targetEdge(x, y);
+            if (target >= 0 && preview.layout().attach(draft, selectedPart, selectedEdge, target / 4, target % 4)) {
+                selectedEdge = -1;
+                notice = target / 4 == 5 ? UiText.get("Attached to the border. This element no longer resizes it.",
+                        "Przyklejono do ramki. Ten element nie zmienia już jej rozmiaru.")
+                        : UiText.get("Attached. Dragging now changes the gap.", "Przyklejono. Przeciąganie zmienia teraz odstęp.");
+                rebuildWidgets();
+            }
+            setFocused(null);
+            return true;
+        }
         if (inCanvas(x, y) && button <= 2) {
+            int edge = button == 0 ? sourceEdge(x, y) : -1;
+            if (edge >= 0) {
+                selectedEdge = edge;
+                notice = UiText.get("Click a green target edge. Right-click cancels.",
+                        "Kliknij zieloną krawędź docelową. Prawy przycisk anuluje.");
+                setFocused(null);
+                rebuildWidgets();
+                return true;
+            }
             int hit = button == 0 ? preview.hit((x - originX()) / zoom, (y - originY()) / zoom) : -1;
-            if (hit >= 0) { selectedPart = hit; draggedPart = hit; rebuildWidgets(); }
+            if (hit >= 0) { selectedPart = hit; selectedEdge = -1; draggedPart = hit; rebuildWidgets(); }
             else panning = true;
             setFocused(null);
             return true;
@@ -376,14 +520,10 @@ final class WaypointPresetEditorScreen extends AlertScreen {
             return true;
         }
         if (draggedPart >= 0) {
-            if (draggedPart == 4) {
-                draft.iconX = Math.max(-512, Math.min(512, draft.iconX + (float) dx / zoom));
-                draft.iconY = Math.max(-512, Math.min(512, draft.iconY + (float) dy / zoom));
-            } else {
-                WaypointPreset.TextPart part = preview.part(draggedPart);
-                part.x = Math.max(-512, Math.min(512, part.x + (float) dx / zoom));
-                part.y = Math.max(-512, Math.min(512, part.y + (float) dy / zoom));
-            }
+            float xPosition = WaypointPresetLayout.position(draft, draggedPart, 0) + (float) dx / zoom;
+            float yPosition = WaypointPresetLayout.position(draft, draggedPart, 1) + (float) dy / zoom;
+            WaypointPresetLayout.position(draft, draggedPart, 0, Math.max(-512, Math.min(512, xPosition)));
+            WaypointPresetLayout.position(draft, draggedPart, 1, Math.max(-512, Math.min(512, yPosition)));
             return true;
         }
         return super.dragContent(x, y, button, dx, dy);

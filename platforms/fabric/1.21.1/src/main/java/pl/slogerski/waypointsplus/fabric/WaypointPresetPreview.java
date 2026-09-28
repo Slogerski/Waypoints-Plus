@@ -15,6 +15,7 @@ import java.util.Base64;
 final class WaypointPresetPreview implements AutoCloseable {
     private static final Identifier PNG_TEXTURE = Identifier.of("waypointsplus", "dynamic/preset_preview");
     private final WaypointPreset preset;
+    private final WaypointPresetLayout layout = new WaypointPresetLayout();
     private final TextRenderer textRenderer;
     private final ItemStack item;
     private NativeImageBackedTexture texture;
@@ -65,23 +66,41 @@ final class WaypointPresetPreview implements AutoCloseable {
         };
     }
 
-    Bounds textBounds(int index) {
-        WaypointPreset.TextPart part = part(index);
-        float width = textRenderer.getWidth(text(index)) * part.scale;
-        return new Bounds(part.x - width / 2, part.y, part.x + width / 2, part.y + textRenderer.fontHeight * part.scale);
+    private void updateLayout() {
+        for (int i = 0; i < 4; i++) {
+            WaypointPreset.TextPart part = part(i);
+            float width = textRenderer.getWidth(text(i)) * part.scale;
+            layout.set(i, part.x - width / 2, part.y, width, textRenderer.fontHeight * part.scale, part.enabled);
+        }
+        layout.set(4, preset.iconX, preset.iconY, 16 * preset.iconScale, 16 * preset.iconScale, preset.icon);
+        layout.resolve(preset);
     }
 
-    Bounds iconBounds() {
-        float size = 16 * preset.iconScale;
-        return new Bounds(preset.iconX, preset.iconY, preset.iconX + size, preset.iconY + size);
+    WaypointPresetLayout layout() {
+        updateLayout();
+        return layout;
+    }
+
+    boolean enabled(int index) {
+        return index == 5 ? preset.border || preset.background : index == 4 ? preset.icon : part(index).enabled;
+    }
+
+    Bounds bounds(int index) {
+        updateLayout();
+        return resolvedBounds(index);
+    }
+
+    private Bounds resolvedBounds(int index) {
+        return new Bounds(layout.left(index), layout.top(index), layout.right(index), layout.bottom(index));
     }
 
     Bounds contentBounds() {
+        updateLayout();
         float left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
         float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
         for (int i = 0; i < 5; i++) {
             if (i == 4 ? !preset.icon : !part(i).enabled) continue;
-            Bounds bounds = i == 4 ? iconBounds() : textBounds(i);
+            Bounds bounds = resolvedBounds(i);
             left = Math.min(left, bounds.left); top = Math.min(top, bounds.top);
             right = Math.max(right, bounds.right); bottom = Math.max(bottom, bounds.bottom);
         }
@@ -90,45 +109,38 @@ final class WaypointPresetPreview implements AutoCloseable {
     }
 
     int hit(double x, double y) {
-        for (int i = 3; i >= 0; i--) if (part(i).enabled && textBounds(i).contains(x, y)) return i;
-        if (preset.icon && iconBounds().contains(x, y)) return 4;
+        updateLayout();
+        for (int i = 3; i >= 0; i--) if (part(i).enabled && resolvedBounds(i).contains(x, y)) return i;
+        if (preset.icon && resolvedBounds(4).contains(x, y)) return 4;
         return -1;
     }
 
     void draw(DrawContext context, float originX, float originY, float zoom, int selected) {
-        float left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
-        float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < 5; i++) {
-            if (i == 4 ? !preset.icon : !part(i).enabled) continue;
-            if (!preset.linked(i)) continue;
-            Bounds bounds = i == 4 ? iconBounds() : textBounds(i);
-            left = Math.min(left, bounds.left); top = Math.min(top, bounds.top);
-            right = Math.max(right, bounds.right); bottom = Math.max(bottom, bounds.bottom);
-        }
-        if (!Float.isFinite(left)) { left = -20; top = -5; right = 20; bottom = 5; }
+        updateLayout();
+        int l = (int) layout.left(5), t = (int) layout.top(5);
+        int r = (int) layout.right(5), b = (int) layout.bottom(5);
         context.getMatrices().push();
         context.getMatrices().translate(originX, originY, 0);
         context.getMatrices().scale(zoom, zoom, 1);
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         int marker = settings.markerArgb | 0xFF000000;
         int background = tintedBackground(settings.backgroundArgb, marker, settings.markerTintPercent);
-        int l = (int) Math.floor(left - preset.padding), t = (int) Math.floor(top - preset.padding);
-        int r = (int) Math.ceil(right + preset.padding), b = (int) Math.ceil(bottom + preset.padding);
         if (preset.background) shape(context, l, t, r, b, background, preset.corners);
         if (preset.border) frame(context, l, t, r, b, Math.max(1, Math.round(preset.borderSize)), marker, preset.corners);
         for (int i = 0; i < 4; i++) {
             WaypointPreset.TextPart part = part(i);
             if (!part.enabled) continue;
             context.getMatrices().push();
-            context.getMatrices().translate(part.x, part.y, 0);
+            context.getMatrices().translate(layout.centerX(i), layout.top(i), 0);
             context.getMatrices().scale(part.scale, part.scale, 1);
-            context.drawTextWithShadow(textRenderer, text(i), -textRenderer.getWidth(text(i)) / 2, 0,
+            context.getMatrices().translate(-textRenderer.getWidth(text(i)) / 2.0f, 0, 0);
+            context.drawTextWithShadow(textRenderer, text(i), 0, 0,
                     settings.matchTextToBorder ? marker : settings.textArgb);
             context.getMatrices().pop();
         }
         if (preset.icon) {
             context.getMatrices().push();
-            context.getMatrices().translate(preset.iconX, preset.iconY, 0);
+            context.getMatrices().translate(layout.left(4), layout.top(4), 0);
             context.getMatrices().scale(preset.iconScale, preset.iconScale, 1);
             if (preset.pngIcon && texture != null) {
                 PresetTextures.draw(context, PNG_TEXTURE, 0, 0, 0f, 0f,
@@ -137,7 +149,7 @@ final class WaypointPresetPreview implements AutoCloseable {
             context.getMatrices().pop();
         }
         if (selected >= 0 && (selected == 4 ? preset.icon : part(selected).enabled)) {
-            Bounds bounds = selected == 4 ? iconBounds() : textBounds(selected);
+            Bounds bounds = resolvedBounds(selected);
             frame(context, (int) bounds.left - 1, (int) bounds.top - 1, (int) Math.ceil(bounds.right) + 1,
                     (int) Math.ceil(bounds.bottom) + 1, 1, 0xFFCEB36F, false);
         }

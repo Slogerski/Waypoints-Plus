@@ -210,7 +210,8 @@ final class WaypointHudRenderer {
             if (batch.icon == null || batch.visible.isEmpty()) continue;
             for (PreparedWaypoint prepared : batch.visible) {
                 WaypointPreset layout = prepared.compact ? SMART_PRESET : batch.preset;
-                batch.icon.draw(prepared.label.matrix, iconQueue, layout.iconX, layout.iconY, layout.iconScale);
+                WaypointLabel label = prepared.renderLabel();
+                batch.icon.draw(label.matrix, iconQueue, label.iconX(), label.iconY(), layout.iconScale);
             }
         }
 
@@ -282,8 +283,8 @@ final class WaypointHudRenderer {
     private static void collectSmart(PreparedWaypoint prepared) {
         WaypointPreset preset = prepared.batch == null ? null : prepared.batch.preset;
         boolean hasIcon = preset != null && preset.icon;
-        float left = hasIcon ? preset.iconX : prepared.label.left();
-        float top = hasIcon ? preset.iconY : prepared.label.top();
+        float left = hasIcon ? prepared.label.iconX() : prepared.label.left();
+        float top = hasIcon ? prepared.label.iconY() : prepared.label.top();
         float width = hasIcon ? 16 * preset.iconScale : prepared.label.right() - left;
         float height = hasIcon ? 16 * preset.iconScale : prepared.label.bottom() - top;
         if (!PROJECTION.project(prepared.label.matrix, left, top, width, height)) return;
