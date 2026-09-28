@@ -37,6 +37,7 @@ final class WaypointPreset {
 
     static WaypointPreset classic() {
         WaypointPreset preset = new WaypointPreset();
+        preset.item = "minecraft:diamond";
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         preset.distance.enabled = settings.showDistance;
         preset.coordinates.enabled = settings.showCoordinates;
@@ -48,6 +49,7 @@ final class WaypointPreset {
         WaypointPreset preset = classic();
         preset.id = DEFAULT_ICON_ID;
         preset.name = UiText.get("Default + Icon", "Domyślny + ikona");
+        preset.item = "minecraft:painting";
         preset.icon = true;
         preset.iconLinked = false;
         preset.iconY = -8;
@@ -57,16 +59,16 @@ final class WaypointPreset {
     static WaypointPreset singleIcon() {
         WaypointPreset preset = new WaypointPreset();
         preset.id = SINGLE_ICON_ID;
-        preset.name = "Single icon";
-        preset.item = "minecraft:grass_block";
+        preset.name = "Single Icon";
+        preset.item = "minecraft:spawner";
         preset.label.enabled = false;
         preset.distance.x = 0;
         preset.icon = true;
-        preset.iconX = -8.64219f;
-        preset.iconY = -5.341125f;
+        preset.iconX = -8.2404585f;
+        preset.iconY = -4.4762135f;
         preset.corners = true;
         preset.border = false;
-        preset.padding = 2;
+        preset.padding = 0.1f;
         return preset;
     }
 
