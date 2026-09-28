@@ -159,22 +159,26 @@ final class WaypointManagerScreen extends Screen {
         selection.confirmSingleDelete = null;
         List<Waypoint> selected = entries.stream().filter(w -> selection.ids.contains(w.id())).toList();
         if (selected.isEmpty()) return;
-        client.keyboard.setClipboard(WaypointTransfer.exportText(selected));
-        selection.message = UiText.get("Copied ", "Skopiowano ") + WaypointCountText.format(selected.size());
+        try {
+            client.keyboard.setClipboard(WaypointPresetTransfer.exportText(selected));
+            selection.message = UiText.get("Copied ", "Skopiowano ") + WaypointCountText.format(selected.size());
+        } catch (RuntimeException exception) {
+            selection.message = UiText.get("Could not export waypoint data", "Nie udało się wyeksportować waypointów");
+        }
         client.setScreen(new WaypointManagerScreen(parent, page, selection));
     }
 
     private void importClipboard(String scope) {
         selection.confirmSingleDelete = null;
         try {
-            List<WaypointTransfer.Entry> imported = WaypointTransfer.importText(client.keyboard.getClipboard());
-            if (!WaypointTransfer.customDimensions(imported).isEmpty()) {
-                client.setScreen(new ImportDimensionWarningScreen(this, imported,
+            WaypointPresetTransfer.Payload imported = WaypointPresetTransfer.importText(client.keyboard.getClipboard());
+            if (!WaypointTransfer.customDimensions(imported.entries()).isEmpty()) {
+                client.setScreen(new ImportDimensionWarningScreen(this, imported.entries(),
                         client.world.getRegistryKey().getValue().toString(),
-                        values -> finishImport(scope, values)));
+                        values -> resolveImport(scope, imported.withEntries(values))));
                 return;
             }
-            finishImport(scope, imported);
+            resolveImport(scope, imported);
             return;
         } catch (RuntimeException exception) {
             selection.message = UiText.get("Invalid waypoint data in clipboard", "Nieprawidłowe dane w schowku");
@@ -182,9 +186,22 @@ final class WaypointManagerScreen extends Screen {
         client.setScreen(new WaypointManagerScreen(parent, page, selection));
     }
 
-    private void finishImport(String scope, List<WaypointTransfer.Entry> imported) {
-        int added = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
-        selection.message = UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(added);
+    private void resolveImport(String scope, WaypointPresetTransfer.Payload imported) {
+        if (!imported.missingPresets().isEmpty()) {
+            client.setScreen(new ImportPresetScreen(this, imported, values -> finishImport(scope, values)));
+        } else finishImport(scope, imported.remapPresets(java.util.Map.of()));
+    }
+
+    private void finishImport(String scope, WaypointPresetTransfer.Payload imported) {
+        if (client.world == null || !scope.equals(ServerScope.current())) {
+            selection.message = UiText.get("Import cancelled: world or server changed", "Import anulowany: zmieniono świat lub serwer");
+            client.setScreen(new WaypointManagerScreen(parent, page, selection));
+            return;
+        }
+        WaypointConfigStore.ImportResult result = WaypointsPlusClient.config().importWaypoints(scope, profileName, imported);
+        selection.message = result.stylesSaved()
+                ? UiText.get("Imported ", "Zaimportowano ") + WaypointCountText.format(result.added())
+                : UiText.get("Could not save imported preset assignments", "Nie udało się zapisać przypisania szablonów");
         client.setScreen(new WaypointManagerScreen(parent, page, selection));
     }
 

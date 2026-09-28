@@ -25,6 +25,9 @@ final class CreateWaypointScreen extends WaypointFormScreen {
     @Override protected void persist(String name, int x, int y, int z, String color, String dimension) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) throw new IllegalStateException();
-        WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(), dimension, x, y, z, color);
+        var id = WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(), dimension, x, y, z, color);
+        if (!WaypointPresetStore.assign(id, selectedPreset, selectedItem)) {
+            org.slf4j.LoggerFactory.getLogger("waypointsplus").warn("Cannot assign waypoint preset; using classic appearance");
+        }
     }
 }

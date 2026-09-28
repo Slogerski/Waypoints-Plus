@@ -281,17 +281,127 @@
             title: {"en":"Creating and Editing Waypoints","pl":"Tworzenie i edycja waypointów"},
             content: {
                 en: `<p>Press <code>B</code> to mark where you are, or enter another location before saving. A name such as <strong>North gate</strong> is easier to recognize than a row of coordinates.</p>
-<h3>Name and position</h3><p>The name field is focused when the form opens, so you can start typing straight away. X, Y and Z initially use your current block position. You can edit them individually or use Paste to fill coordinates from the clipboard.</p>
+<h3>Name and position</h3><p>The name field is focused when the form opens, so you can start typing straight away. X, Y and Z initially use your current block position. You can edit them individually or use the clipboard icon beside them to paste coordinates.</p>
+<p>The incognito icon beside Paste hides those fields without changing their values. See <a href="?lang=en#incognito">Incognito Mode</a> before using it on a stream.</p>
+<h3>Choose a layout</h3><p>Select <strong>Preset</strong> to open the list on the left. Choose a built-in layout or one you made in the <a href="?lang=en#preset-creator">Preset Creator</a>. If the preset uses an item icon, a square beside the name lets you choose an item for this waypoint. <a href="?lang=en#presets">More about presets</a>.</p>
 <h3>Color and dimension</h3><p>Open <strong>Settings</strong> in the creation form to choose a border color, adjust opacity and select a dimension. Overworld, Nether and End have their own buttons. For a custom dimension, use the custom field and apply a valid value.</p>
 <p>The selected dimension starts as the one you are currently in. If you enter coordinates from another dimension, change that selection too. See <a href="?lang=en#dimensions">Dimensions</a> for conversion examples.</p>
 <h3>Editing later</h3><p>Open the manager with <code>;</code> and select <strong>Edit</strong> next to the waypoint. You can change the name, location, dimension and color there. Save to keep the changes.</p>
 <p>The delete button asks for confirmation. Click it again to remove the waypoint, or choose another action to cancel.</p>`,
                 pl: `<p>Naciśnij <code>B</code>, aby zaznaczyć swoją pozycję, albo wpisz inne miejsce przed zapisaniem. Nazwę <strong>Północna brama</strong> łatwiej rozpoznać niż sam ciąg koordynatów.</p>
-<h3>Nazwa i pozycja</h3><p>Po otwarciu formularza pole nazwy jest aktywne, więc możesz od razu pisać. X, Y i Z początkowo wskazują Twoją pozycję blokową. Możesz zmienić każde pole osobno albo wkleić koordynaty przyciskiem Wklej.</p>
+<h3>Nazwa i pozycja</h3><p>Po otwarciu formularza pole nazwy jest aktywne, więc możesz od razu pisać. X, Y i Z początkowo wskazują Twoją pozycję blokową. Możesz zmienić każde pole osobno albo wkleić koordynaty ikoną schowka obok nich.</p>
+<p>Ikona incognito obok Wklej ukrywa te pola bez zmiany ich wartości. Przed użyciem na transmisji przeczytaj opis <a href="?lang=pl#incognito">trybu incognito</a>.</p>
+<h3>Wybierz wygląd</h3><p>Kliknij <strong>Szablon</strong>, aby otworzyć listę po lewej. Wybierz gotowy układ albo własny z <a href="?lang=pl#preset-creator">kreatora szablonów</a>. Jeśli szablon używa ikony przedmiotu, kwadrat obok nazwy pozwala wybrać przedmiot dla tego waypointa. <a href="?lang=pl#presets">Więcej o szablonach</a>.</p>
 <h3>Kolor i wymiar</h3><p>Otwórz <strong>Ustawienia</strong> w formularzu tworzenia, aby wybrać kolor obramowania, przezroczystość i wymiar. Overworld, Nether i End mają własne przyciski. Dla niestandardowego wymiaru użyj pola własnej wartości i zatwierdź poprawny wpis.</p>
 <p>Na początku wybrany jest wymiar, w którym przebywasz. Jeśli wpisujesz koordynaty z innego wymiaru, zmień również ten wybór. Przykłady przeliczania znajdziesz w artykule <a href="?lang=pl#dimensions">Wymiary</a>.</p>
 <h3>Późniejsza edycja</h3><p>Otwórz listę klawiszem <code>;</code> i wybierz <strong>Edytuj</strong> obok waypointa. Możesz zmienić nazwę, pozycję, wymiar i kolor. Zapisz, aby zachować zmiany.</p>
 <p>Przycisk usuwania wymaga potwierdzenia. Kliknij go ponownie, aby usunąć waypoint, albo wybierz inną akcję, aby anulować.</p>`
+            }
+        },
+        {
+            id: "incognito",
+            title: {"en":"Incognito Mode","pl":"Tryb incognito"},
+            content: {
+                en: `<p>Incognito hides the coordinate fields while creating or editing a waypoint. It is useful when you need to open the form during a stream without showing a base location.</p>
+<h3>Turn it on</h3><ol><li>Open the waypoint creation or editing form.</li><li>Click the hat-and-glasses icon to the left of the clipboard icon.</li><li>X, Y and Z now each show <code>****</code>, regardless of how long the actual number is.</li></ol>
+<p>Click the icon again to reveal the numbers. It becomes brighter while incognito is active. The choice is saved immediately and stays active when you reopen the form or restart Minecraft.</p>
+<h3>The coordinates stay unchanged</h3><p>Only their display is masked. The real values remain in the fields, Paste still fills them, and saving uses those values. Incognito does not replace coordinates with asterisks in your waypoint files.</p>
+<h3>What it does not hide</h3><p>This is not a global privacy switch. It does not hide coordinates or distance on labels in the world, remove them from clipboard exports or alert messages, or conceal the terrain around you.</p>
+<p>For recording, also turn off <strong>Coordinates</strong> and <strong>Distance</strong> in Settings and check your waypoint names. See <a href="?lang=en#privacy">Screenshot Privacy</a> for the rest of the checklist.</p>`,
+                pl: `<p>Incognito ukrywa pola koordynatów podczas tworzenia i edycji waypointa. Przydaje się, gdy chcesz otworzyć formularz na transmisji bez pokazania lokalizacji bazy.</p>
+<h3>Jak włączyć</h3><ol><li>Otwórz formularz tworzenia lub edycji waypointa.</li><li>Kliknij ikonę kapelusza i okularów po lewej od ikony schowka.</li><li>Pola X, Y i Z pokażą po <code>****</code>, niezależnie od długości prawdziwej liczby.</li></ol>
+<p>Kliknij ikonę ponownie, aby odsłonić liczby. Przy aktywnym incognito ikona jest jaśniejsza. Wybór zapisuje się od razu i pozostaje aktywny po ponownym otwarciu formularza oraz uruchomieniu Minecrafta.</p>
+<h3>Koordynaty pozostają bez zmian</h3><p>Ukryty jest tylko ich wygląd. Prawdziwe wartości nadal znajdują się w polach, Wklej nadal je uzupełnia, a zapis korzysta z tych wartości. Incognito nie zamienia koordynatów na gwiazdki w plikach waypointów.</p>
+<h3>Czego nie ukrywa</h3><p>To nie jest ogólny przełącznik prywatności. Nie ukrywa koordynatów ani odległości na etykietach w świecie, nie usuwa ich z eksportów i wiadomości alertów ani nie zasłania otaczającego terenu.</p>
+<p>Podczas nagrywania wyłącz również <strong>Koordynaty</strong> i <strong>Odległość</strong> w ustawieniach oraz sprawdź nazwy waypointów. Pozostałe wskazówki znajdziesz w artykule <a href="?lang=pl#privacy">Prywatność na screenach</a>.</p>`
+            }
+        },
+        {
+            id: "presets",
+            title: {"en":"Waypoint Presets","pl":"Szablony waypointów"},
+            content: {
+                en: `<p>A preset defines how a waypoint looks: which text lines are visible, where they sit, whether it has an icon and how its background and border fit around the content.</p>
+<p>Presets are shared across all servers, singleplayer worlds and profiles in the same Minecraft instance. Profiles organize locations; presets organize their appearance.</p>
+<h3>Use a preset</h3><ol><li>Open the creation or editing form and select <strong>Preset</strong>.</li><li>Choose a row in the list on the left. The selected preset is highlighted.</li><li>Fill in the waypoint details and save.</li></ol>
+<p>Click the star beside a preset to pin it above non-favorites. Click it again to unpin it. The list scrolls when there are more entries than fit on screen.</p>
+<h3>Built-in layouts</h3><ul><li><strong>Default</strong>: the classic waypoint label, without a custom layout.</li><li><strong>Single icon</strong>: a compact icon with distance.</li><li><strong>Designed</strong>: an icon with separate name, distance and coordinate lines.</li></ul>
+<p>Distance and coordinate lines also depend on the corresponding visibility options in Settings. Built-in presets can be favorited, but cannot be edited or removed.</p>
+<h3>Icons for individual waypoints</h3><p>With an item-icon preset selected, a square appears beside the waypoint name. Click it to choose the item for that waypoint. It starts with the preset's item; changing it does not change other waypoints or the preset itself. PNG icons come from the preset and are configured in its creator.</p>
+<h3>Manage your layouts</h3><p>Open <strong>Settings</strong> &gt; <strong>Advanced Settings</strong> &gt; <strong>Presets</strong>. Select a custom preset to edit it, use the star to favorite it, or click X twice to remove it. Removing a preset does not delete its waypoints; they return to the Default layout.</p>
+<p>There is room for 64 custom presets in addition to the built-in layouts. See <a href="?lang=en#preset-creator">Preset Creator</a> for a step-by-step example.</p>
+<h3>Sharing a layout with waypoints</h3><p>Waypoint exports keep the assigned preset identifier and item choice, but do not include the preset definition. If the recipient does not have that preset, Import asks them to choose a replacement. To share the same design, export it separately from the creator and import it there first. The imported design gets a new local identifier, so select it as the replacement when importing the waypoints.</p>`,
+                pl: `<p>Szablon określa wygląd waypointa: widoczne wiersze tekstu, ich pozycje, ikonę oraz sposób dopasowania tła i ramki do zawartości.</p>
+<p>Szablony są wspólne dla wszystkich serwerów, światów singleplayer i profili w tej samej instalacji Minecrafta. Profile porządkują lokalizacje, a szablony ich wygląd.</p>
+<h3>Jak użyć szablonu</h3><ol><li>Otwórz formularz tworzenia lub edycji i kliknij <strong>Szablon</strong>.</li><li>Wybierz wiersz na liście po lewej. Wybrany szablon jest wyróżniony.</li><li>Uzupełnij dane waypointa i zapisz.</li></ol>
+<p>Gwiazdka obok szablonu przypina go nad pozostałymi. Kliknij ją ponownie, aby odpiąć. Jeśli wpisów jest więcej niż miejsca, listę można przewijać.</p>
+<h3>Gotowe układy</h3><ul><li><strong>Default</strong>: klasyczna etykieta waypointa, bez własnego układu.</li><li><strong>Single icon</strong>: niewielka ikona z odległością.</li><li><strong>Designed</strong>: ikona z osobnymi wierszami nazwy, odległości i koordynatów.</li></ul>
+<p>Widoczność odległości i koordynatów zależy również od odpowiednich opcji w ustawieniach. Gotowe szablony można przypinać, ale nie można ich edytować ani usuwać.</p>
+<h3>Ikona konkretnego waypointa</h3><p>Po wybraniu szablonu z ikoną przedmiotu obok nazwy pojawi się kwadrat. Kliknij go, aby wybrać przedmiot dla tego waypointa. Na początku używa przedmiotu z szablonu; zmiana nie wpływa na inne waypointy ani sam szablon. Ikony PNG pochodzą z szablonu i ustawia się je w jego kreatorze.</p>
+<h3>Zarządzanie układami</h3><p>Otwórz <strong>Ustawienia</strong> &gt; <strong>Ustawienia zaawansowane</strong> &gt; <strong>Szablony</strong>. Wybierz własny szablon, aby go edytować, użyj gwiazdki, aby go przypiąć, albo kliknij X dwa razy, aby usunąć. Usunięcie szablonu nie usuwa waypointów; wracają one do układu Default.</p>
+<p>Możesz zapisać 64 własne szablony oprócz gotowych układów. Instrukcję z przykładem znajdziesz w artykule <a href="?lang=pl#preset-creator">Kreator szablonów</a>.</p>
+<h3>Udostępnianie wyglądu z waypointami</h3><p>Eksport waypointów zachowuje identyfikator przypisanego szablonu i wybrany przedmiot, ale nie zawiera definicji szablonu. Jeśli odbiorca go nie ma, import poprosi o wybranie zamiennika. Aby udostępnić ten sam wygląd, wyeksportuj go osobno z kreatora i najpierw zaimportuj w kreatorze odbiorcy. Importowany układ dostaje nowy lokalny identyfikator, dlatego wybierz go jako zamiennik podczas importowania waypointów.</p>`
+            }
+        },
+        {
+            id: "waypoint-grouping",
+            title: {"en":"Waypoint Grouping","pl":"Grupowanie waypointów"},
+            content: {
+                en: `<p>Waypoint Grouping replaces a crowded cluster of distant markers with one readable label. It only changes what you see in the world. Your waypoints, their coordinates and assigned presets stay separate and unchanged.</p>
+<h3>Turn it on</h3><ol><li>Open <strong>Settings</strong> &gt; <strong>Advanced Settings</strong>.</li><li>Set <strong>Waypoint Grouping</strong> to <strong>ON</strong>.</li><li>Set <strong>Grouping Distance</strong>, then save your settings.</li></ol>
+<p>Grouping is off by default. The default distance is <strong>250 blocks</strong>; you can enter a whole number from <code>1</code> to <code>100000</code>. A waypoint must be farther away than this value, not exactly at it, to qualify.</p>
+<h3>What forms a group?</h3><ul><li>There must be at least <strong>three overlapping waypoints</strong> on screen.</li><li>All members must be beyond Grouping Distance.</li><li>At least one member must use a <a href="?lang=en#presets">preset with an icon</a>. Markers without icons can join that group, but a cluster made entirely of text-only waypoints is not grouped.</li></ul>
+<p>Overlap is measured on screen, not by the distance between locations in the world. Waypoints can be far apart in the world and still cover each other from your viewpoint. Separate clusters stay separate; overlapping groups can join into a larger group.</p>
+<p>Grouping only uses waypoints from the current server or world and active profile that are eligible to display in the current dimension. It does not combine different profiles or reveal waypoints hidden by dimension settings.</p>
+<h3>What the group displays</h3><p>Groups use the built-in <strong>Designed</strong> layout, even if their members use other presets. The label shows the nearest member's name followed by the total count, for example <code>Storage (12)</code>. Its distance and coordinates refer to that nearest member and follow your visibility settings.</p>
+<p>The icon comes from the nearest member that has an icon. That can be a different waypoint from the one supplying the name. The count includes every member, including the representative.</p>
+<h3>Moving around</h3><p>Groups are remembered rather than rebuilt on every camera turn. The grouping check runs every <strong>30 seconds</strong>, and sooner when you change profiles, waypoint or preset data, dimensions or Grouping Distance, or cross the distance threshold. Looking away alone does not discard an existing group.</p>
+<p>When any member comes within Grouping Distance, that group displays its individual waypoints again. Nearby markers in the same screen area can also prevent distant markers from being grouped over them.</p>
+<h3>Example</h3><p>You have twelve storage waypoints more than 250 blocks away. Their markers overlap, and at least one uses a chest icon. With grouping enabled, they can appear as <code>Storage (12)</code> instead of twelve overlapping labels. Move closer or turn grouping off to see the individual markers again.</p>
+<h3>If nothing changes</h3><p>Check that the setting was saved, there are at least three overlapping markers, at least one has an icon and every member is beyond the threshold. Two markers alone will not form a group. Very large on-screen markers may be left ungrouped to keep the overlap check bounded.</p>`,
+                pl: `<p>Grupowanie waypointów zastępuje skupisko odległych, nakładających się znaczników jedną czytelną etykietą. Zmienia tylko wyświetlanie w świecie. Waypointy, ich koordynaty i przypisane szablony pozostają osobne i niezmienione.</p>
+<h3>Jak włączyć</h3><ol><li>Otwórz <strong>Ustawienia</strong> &gt; <strong>Ustawienia zaawansowane</strong>.</li><li>Włącz <strong>Grupowanie waypointów</strong>.</li><li>Ustaw <strong>Odległość grupowania</strong> i zapisz ustawienia.</li></ol>
+<p>Domyślnie grupowanie jest wyłączone. Domyślna odległość wynosi <strong>250 bloków</strong>; możesz wpisać liczbę całkowitą od <code>1</code> do <code>100000</code>. Waypoint musi znajdować się dalej niż ustawiona wartość, a nie dokładnie na jej granicy.</p>
+<h3>Kiedy powstaje grupa?</h3><ul><li>Na ekranie muszą nakładać się co najmniej <strong>trzy waypointy</strong>.</li><li>Wszystkie muszą znajdować się poza odległością grupowania.</li><li>Przynajmniej jeden musi używać <a href="?lang=pl#presets">szablonu z ikoną</a>. Waypointy bez ikon mogą dołączyć do takiej grupy, ale same etykiety tekstowe nie utworzą grupy.</li></ul>
+<p>Sprawdzane jest nakładanie na ekranie, nie odległość między lokalizacjami w świecie. Waypointy mogą być od siebie daleko, a mimo to zasłaniać się z twojej perspektywy. Osobne skupiska pozostają osobne, a nakładające się grupy mogą połączyć się w większą.</p>
+<p>Grupowanie uwzględnia tylko waypointy aktualnego serwera lub świata i aktywnego profilu, które mogą być wyświetlane w bieżącym wymiarze. Nie łączy różnych profili ani nie odsłania waypointów ukrytych przez ustawienia wymiarów.</p>
+<h3>Co wyświetla grupa</h3><p>Grupy używają gotowego układu <strong>Designed</strong>, nawet jeśli ich elementy mają inne szablony. Etykieta pokazuje nazwę najbliższego waypointa i liczbę wszystkich elementów, na przykład <code>Magazyn (12)</code>. Odległość i koordynaty odnoszą się do tego najbliższego waypointa i respektują ustawienia ich widoczności.</p>
+<p>Ikona pochodzi z najbliższego waypointa, który ją ma. Może to być inny waypoint niż ten, z którego pochodzi nazwa. Licznik uwzględnia wszystkie elementy, również reprezentanta grupy.</p>
+<h3>Poruszanie się</h3><p>Grupy są zapamiętywane zamiast przeliczania przy każdym obrocie kamery. Sprawdzenie grupowania odbywa się co <strong>30 sekund</strong>, a wcześniej przy zmianie profilu, danych waypointów lub szablonów, wymiaru, odległości grupowania albo przekroczeniu jej progu. Samo odwrócenie wzroku nie usuwa istniejącej grupy.</p>
+<p>Gdy którykolwiek element znajdzie się w zasięgu odległości grupowania, grupa znowu pokazuje osobne waypointy. Bliskie znaczniki w tym samym obszarze ekranu mogą również zapobiec grupowaniu odległych znaczników nad nimi.</p>
+<h3>Przykład</h3><p>Masz dwanaście waypointów magazynów dalej niż 250 bloków. Ich znaczniki nakładają się, a przynajmniej jeden ma ikonę skrzyni. Po włączeniu grupowania mogą wyświetlić się jako <code>Magazyn (12)</code> zamiast dwunastu etykiet na sobie. Podejdź bliżej lub wyłącz grupowanie, aby znowu zobaczyć osobne znaczniki.</p>
+<h3>Jeśli nie widać zmiany</h3><p>Sprawdź, czy ustawienie zostało zapisane, nakładają się co najmniej trzy znaczniki, przynajmniej jeden ma ikonę, a wszystkie znajdują się poza progiem odległości. Dwa znaczniki nie utworzą grupy. Bardzo duże znaczniki na ekranie mogą pozostać osobne, aby ograniczyć koszt sprawdzania nakładania.</p>`
+            }
+        },
+        {
+            id: "preset-creator",
+            title: {"en":"Preset Creator","pl":"Kreator szablonów"},
+            content: {
+                en: `<p>Create a layout once, then use it for waypoints on any server. Start from <strong>Settings</strong> &gt; <strong>Advanced Settings</strong> &gt; <strong>Presets</strong> and click the plus row at the top. Select an existing custom preset to edit it instead.</p>
+<h3>Preview and properties</h3><p>Name the preset at the top left. The center shows a sample waypoint; the scrollable Properties panel on the right controls its parts. The sample name, distance and coordinates are preview data, not a saved location.</p>
+<ul><li><strong>Text</strong>: enable or disable Name, Distance, Coords and Profile. Select a part to change its X, Y and Scale.</li><li><strong>Icon</strong>: use an item or upload a PNG, then set its position and scale.</li><li><strong>Other</strong>: toggle corners, border and background; adjust Border Size and Padding.</li></ul>
+<p>These X and Y values are positions inside the label, not world coordinates. They do not move a waypoint to another location.</p>
+<h3>Move and zoom</h3><p>Drag a visible text part or icon with the left mouse button to move it. Drag an empty area of the preview to pan the view. Use the mouse wheel over the preview to zoom, or over Properties to scroll its options.</p>
+<p>Zoom ranges from 50% to 800%. At 50% the whole workspace fits in view and panning is locked. At larger zoom levels, panning stays within the workspace. Moving the view does not change the layout.</p>
+<h3>Fit Background To</h3><p>Each checkbox decides whether that part expands the background and border. Uncheck Name, for example, to let a long name extend outside a compact panel. The name remains visible; it simply stops affecting the panel size.</p>
+<h3>PNG icons</h3><p>Use a square PNG at <code>16×16</code>, <code>32×32</code> or <code>64×64</code>, up to <code>32 KiB</code>. Transparent backgrounds work well for icons. On Minecraft 26.3, Upload opens a field for the file path instead of a file picker.</p>
+<p>The image is saved inside the preset data, so you do not need to keep the original PNG beside your Minecraft files.</p>
+<h3>A simple example</h3><ol><li>Name the preset <strong>Storage</strong>.</li><li>Enable Name, Distance and Icon; disable Coords and Profile.</li><li>Choose a chest as the item icon and place it above the text.</li><li>Leave Background on and choose which parts it should fit around.</li><li>Save, then select Storage when creating a waypoint. You can choose a different item for each location.</li></ol>
+<h3>Save, import and export</h3><p><strong>Save</strong> stores the layout. It is disabled while the name or a property is invalid. <strong>Exit</strong> leaves without saving the draft.</p>
+<p><strong>Export</strong> copies the current valid layout to the clipboard. <strong>Import</strong> loads a preset from clipboard text into the open draft; save afterward to keep it. Importing while editing replaces that draft, so start with the plus row if you want a separate preset.</p>
+<p>Definitions and waypoint assignments are stored in <code>config/waypointsplus/presets.json</code>. Include it in your <a href="?lang=en#local-data">backup</a>.</p>`,
+                pl: `<p>Przygotuj układ raz, a potem używaj go dla waypointów na dowolnym serwerze. Otwórz <strong>Ustawienia</strong> &gt; <strong>Ustawienia zaawansowane</strong> &gt; <strong>Szablony</strong> i kliknij wiersz z plusem na górze. Aby edytować istniejący własny szablon, wybierz go z listy.</p>
+<h3>Podgląd i właściwości</h3><p>Wpisz nazwę szablonu u góry po lewej. Na środku znajduje się przykładowy waypoint, a przewijana lista właściwości po prawej steruje jego elementami. Nazwa, odległość i koordynaty w podglądzie są przykładowe, nie oznaczają zapisanej lokalizacji.</p>
+<ul><li><strong>Tekst</strong>: włączaj lub wyłączaj Nazwę, Odległość, Koordynaty i Profil. Wybierz element, aby zmienić jego X, Y i Skalę.</li><li><strong>Ikona</strong>: wybierz przedmiot lub wgraj PNG, a następnie ustaw pozycję i skalę.</li><li><strong>Pozostałe</strong>: przełączaj narożniki, ramkę i tło; dobierz Grubość ramki i Odstęp tła.</li></ul>
+<p>Wartości X i Y oznaczają pozycję wewnątrz etykiety, nie koordynaty świata. Nie przenoszą waypointa w inne miejsce.</p>
+<h3>Przesuwanie i przybliżanie</h3><p>Przeciągnij widoczny tekst lub ikonę lewym przyciskiem myszy, aby przesunąć element. Przeciągnij puste miejsce w podglądzie, aby przesunąć widok. Kółko myszy nad podglądem zmienia przybliżenie, a nad właściwościami przewija opcje.</p>
+<p>Przybliżenie ma zakres od 50% do 800%. Przy 50% całe pole pracy mieści się w podglądzie i przesuwanie widoku jest zablokowane. Przy większym przybliżeniu widok pozostaje w granicach pola pracy. Przesuwanie widoku nie zmienia układu.</p>
+<h3>Dopasuj tło do</h3><p>Każdy checkbox określa, czy dany element powiększa tło i ramkę. Odznacz na przykład Nazwę, aby dłuższy napis mógł wychodzić poza niewielki panel. Nazwa nadal jest widoczna, tylko przestaje wpływać na wielkość panelu.</p>
+<h3>Ikony PNG</h3><p>Użyj kwadratowego PNG o rozmiarze <code>16×16</code>, <code>32×32</code> lub <code>64×64</code>, do <code>32 KiB</code>. Przezroczyste tło dobrze sprawdza się przy ikonach. W Minecraft 26.3 przycisk Wgraj otwiera pole ścieżki do pliku zamiast okna wyboru pliku.</p>
+<p>Grafika zapisuje się w danych szablonu, więc nie musisz zachowywać oryginalnego PNG obok plików Minecrafta.</p>
+<h3>Prosty przykład</h3><ol><li>Nazwij szablon <strong>Magazyny</strong>.</li><li>Włącz Nazwę, Odległość i Ikonę; wyłącz Koordynaty i Profil.</li><li>Wybierz skrzynię jako ikonę przedmiotu i umieść ją nad tekstem.</li><li>Zostaw włączone Tło i wybierz elementy, do których ma się dopasować.</li><li>Zapisz, a potem wybierz Magazyny podczas tworzenia waypointa. Dla każdej lokalizacji możesz ustawić inny przedmiot.</li></ol>
+<h3>Zapis, import i eksport</h3><p><strong>Zapisz</strong> zachowuje układ. Przycisk jest nieaktywny, gdy nazwa lub właściwość jest niepoprawna. <strong>Wyjdź</strong> zamyka edycję bez zapisania szkicu.</p>
+<p><strong>Eksport</strong> kopiuje aktualny poprawny układ do schowka. <strong>Import</strong> wczytuje szablon z tekstu w schowku do otwartego szkicu; potem zapisz, aby go zachować. Import podczas edycji zastępuje ten szkic. Jeśli chcesz osobny szablon, zacznij od wiersza z plusem.</p>
+<p>Definicje i przypisania do waypointów znajdują się w <code>config/waypointsplus/presets.json</code>. Uwzględnij ten plik w <a href="?lang=pl#local-data">kopii zapasowej</a>.</p>`
             }
         },
         {
@@ -437,9 +547,12 @@ Nether:    100 64  -50</code></pre>
 
 <h3>Advanced Settings</h3>
 <ul>
+<li><strong>Presets</strong> &lt;-- opens your shared layout list and the <a href="?lang=en#preset-creator">Preset Creator</a>. <a href="?lang=en#presets">More</a></li>
 <li><strong>Fight Alerts</strong> &lt;-- opens the alert manager. <a href="./index.html?lang=en#fight-alerts">More</a></li>
 <li><strong>Blurred Background</strong> &lt;-- controls the darkened or blurred backdrop behind mod menus. The exact effect depends on the Minecraft version.</li>
 <li><strong>Cross-dimensional</strong> &lt;-- displays compatible waypoints between dimensions, including the vanilla Overworld-Nether 8:1 conversion.</li>
+<li><strong>Waypoint Grouping</strong> &lt;-- combines overlapping distant markers into one label without changing their saved data. <a href="?lang=en#waypoint-grouping">Rules and examples</a></li>
+<li><strong>Grouping Distance</strong> &lt;-- sets the minimum distance for grouping, in blocks. The default is <code>250</code>.</li>
 <li><strong>Scale</strong> &lt;-- changes waypoint label size from <code>0.25</code> to <code>4.0</code>.</li>
 <li><strong>Default Text</strong> &lt;-- sets the default text color in eight-digit ARGB format.</li>
 <li><strong>Default Background</strong> &lt;-- sets the default label background color in ARGB format.</li>
@@ -464,9 +577,12 @@ Nether:    100 64  -50</code></pre>
 
 <h3>Ustawienia zaawansowane</h3>
 <ul>
+<li><strong>Szablony</strong> &lt;-- otwiera wspólną listę układów i <a href="?lang=pl#preset-creator">kreator szablonów</a>. <a href="?lang=pl#presets">Więcej</a></li>
 <li><strong>Alerty walki</strong> &lt;-- otwiera menedżer alertów. <a href="./index.html?lang=pl#fight-alerts">Więcej</a></li>
 <li><strong>Rozmyte tło</strong> &lt;-- steruje przyciemnionym lub rozmytym tłem za oknami moda. Dokładny efekt zależy od wersji Minecrafta.</li>
 <li><strong>Między wymiarami</strong> &lt;-- wyświetla zgodne waypointy pomiędzy wymiarami, w tym z przelicznikiem Overworld-Nether <code>8:1</code>.</li>
+<li><strong>Grupowanie waypointów</strong> &lt;-- zastępuje nakładające się odległe znaczniki jedną etykietą, bez zmiany zapisanych danych. <a href="?lang=pl#waypoint-grouping">Zasady i przykłady</a></li>
+<li><strong>Odległość grupowania</strong> &lt;-- określa minimalną odległość grupowania w blokach. Domyślnie <code>250</code>.</li>
 <li><strong>Skala</strong> &lt;-- zmienia wielkość etykiet waypointów w zakresie od <code>0,25</code> do <code>4,0</code>.</li>
 <li><strong>Domyślny tekst</strong> &lt;-- ustawia domyślny kolor tekstu w ośmiocyfrowym formacie ARGB.</li>
 <li><strong>Domyślne tło</strong> &lt;-- ustawia domyślny kolor tła etykiety w formacie ARGB.</li>
@@ -657,12 +773,14 @@ Pancerz: $DURABILITY</code></pre>
                 en: `<p>Before taking a screenshot or starting a stream, check which locations your active profile reveals.</p>
 <ul><li>Turn <strong>Coordinates</strong> and <strong>Distance</strong> off in <a href="#settings">Settings</a>.</li><li>Switch to an empty profile or one containing only public locations.</li><li>Check waypoint names. A name can reveal a base or a teammate even without coordinates.</li></ul>
 <p>Hiding numbers reduces the information on screen, but does not guarantee that a location cannot be identified. Terrain, landmarks, waypoint direction and other mods may still reveal it.</p>
+<h3>Opening the creation form</h3><p>Turn on <a href="?lang=en#incognito">Incognito Mode</a> to mask X, Y and Z with <code>****</code> in the creation and editing forms. This is separate from hiding coordinates on labels in the world.</p>
 <h3>Sharing alerts and exports</h3>
 <p>Waypoint exports contain location data. Alerts can include coordinates, server names, health and supplies, depending on the variables you put in the message. Send them only to people or channels you trust.</p>
 <p>Keep Discord webhook URLs out of screenshots, public repositories and shared configuration files. If a webhook URL is exposed, replace it in Discord and update the alert.</p>`,
                 pl: `<p>Przed zrobieniem screena lub rozpoczęciem transmisji sprawdź, jakie miejsca ujawnia aktywny profil.</p>
 <ul><li>Wyłącz <strong>Koordynaty</strong> i <strong>Odległość</strong> w <a href="#settings">ustawieniach</a>.</li><li>Przełącz się na pusty profil albo taki, który zawiera wyłącznie publiczne miejsca.</li><li>Sprawdź nazwy waypointów. Sama nazwa może zdradzić bazę lub sojusznika, nawet bez koordynatów.</li></ul>
 <p>Ukrycie liczb ogranicza informacje na ekranie, ale nie gwarantuje, że nikt nie rozpozna miejsca. Teren, charakterystyczne budowle, kierunek waypointa i inne mody nadal mogą je ujawnić.</p>
+<h3>Otwieranie formularza</h3><p>Włącz <a href="?lang=pl#incognito">tryb incognito</a>, aby zamaskować X, Y i Z jako <code>****</code> w formularzach tworzenia i edycji. To osobna opcja od ukrywania koordynatów na etykietach w świecie.</p>
 <h3>Udostępnianie alertów i eksportów</h3>
 <p>Eksport waypointów zawiera dane lokalizacji. Alerty mogą zawierać koordynaty, nazwę serwera, zdrowie i zapasy, zależnie od użytych zmiennych. Wysyłaj je tylko zaufanym osobom lub na odpowiednie kanały.</p>
 <p>Nie pokazuj adresów webhooków Discord na screenach, w publicznych repozytoriach ani udostępnianych konfiguracjach. Jeśli adres wycieknie, zastąp webhook na Discordzie i zaktualizuj alert.</p>`
@@ -675,6 +793,7 @@ Pancerz: $DURABILITY</code></pre>
                 en: `<p>Waypoints Plus stores its data locally in your Minecraft instance:</p>
 <pre><code>config/waypointsplus/</code></pre>
 <p>Waypoint files are separated by server or singleplayer world in the <code>waypoints</code> subfolder. Profiles refer to those files. Alerts are stored in <code>fight-alerts.json</code>.</p>
+<p>Preset definitions and their assignments to waypoints are kept in <code>presets.json</code>. The incognito preference is saved in the mod settings. Back up the whole folder to keep layouts and locations together.</p>
 <h3>Back up the whole folder</h3>
 <p>Close Minecraft and copy the entire <code>waypointsplus</code> folder somewhere safe. Keeping only one waypoint file may leave out the profile information that points to it.</p>
 <p>Before changing launchers, moving to another computer or testing an older mod release, keep a separate backup. A launcher profile may use a different Minecraft directory, so check the destination instance rather than assuming all installations share the same files.</p>
@@ -684,6 +803,7 @@ Pancerz: $DURABILITY</code></pre>
                 pl: `<p>Waypoints Plus zapisuje dane lokalnie w katalogu danej instalacji Minecrafta:</p>
 <pre><code>config/waypointsplus/</code></pre>
 <p>Pliki waypointów są rozdzielone według serwera lub świata singleplayer w podfolderze <code>waypoints</code>. Profile odwołują się do tych plików. Alerty są zapisane w <code>fight-alerts.json</code>.</p>
+<p>Definicje szablonów i przypisania do waypointów znajdują się w <code>presets.json</code>. Wybór incognito zapisuje się w ustawieniach moda. Kopia całego folderu zachowuje razem układy i lokalizacje.</p>
 <h3>Kopiuj cały folder</h3>
 <p>Zamknij Minecrafta i skopiuj cały folder <code>waypointsplus</code> w bezpieczne miejsce. Sam plik waypointów może nie zawierać informacji o profilach, które do niego prowadzą.</p>
 <p>Przed zmianą launchera, przeniesieniem danych na inny komputer lub testowaniem starszego wydania moda zachowaj osobną kopię. Profil launchera może korzystać z innego katalogu Minecrafta. Sprawdź katalog docelowej instalacji, zamiast zakładać, że wszystkie używają tych samych plików.</p>

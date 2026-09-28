@@ -248,11 +248,34 @@ final class WaypointSettingsScreen extends Screen {
     private void persistTopDonateState() {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         WaypointSettingsSnapshot current = WaypointSettingsSnapshot.capture(settings);
+        boolean currentSmart = settings.smartWaypoints;
+        int currentSmartDistance = settings.smartDistance;
         session.baseline.restore(settings);
+        settings.smartWaypoints = session.smartWaypoints;
+        settings.smartDistance = session.smartDistance;
         settings.topDonateExpanded = topDonateExpanded;
         WaypointsPlusClient.config().saveSettings();
         current.restore(settings);
+        settings.smartWaypoints = currentSmart;
+        settings.smartDistance = currentSmartDistance;
         settings.topDonateExpanded = topDonateExpanded;
+    }
+
+    void savePresetPreference() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        WaypointSettingsSnapshot current = WaypointSettingsSnapshot.capture(settings);
+        boolean currentSmart = settings.smartWaypoints;
+        int currentSmartDistance = settings.smartDistance;
+        session.baseline.restore(settings);
+        settings.smartWaypoints = session.smartWaypoints;
+        settings.smartDistance = session.smartDistance;
+        try {
+            WaypointsPlusClient.config().saveSettings();
+        } finally {
+            current.restore(settings);
+            settings.smartWaypoints = currentSmart;
+            settings.smartDistance = currentSmartDistance;
+        }
     }
 
     private void openTopDonate(boolean forceRefresh) {
@@ -300,15 +323,33 @@ final class WaypointSettingsScreen extends Screen {
     }
 
     @Override public void close() {
-        if (session.dirty) session.baseline.restore(WaypointsPlusClient.config().settings());
+        if (session.dirty) {
+            WaypointSettings settings = WaypointsPlusClient.config().settings();
+            session.baseline.restore(settings);
+            settings.smartWaypoints = session.smartWaypoints;
+            settings.smartDistance = session.smartDistance;
+        }
         client.setScreen(parent);
     }
+    static void drawLargeTitle(DrawContext context, net.minecraft.client.font.TextRenderer renderer,
+                               net.minecraft.text.Text title, float x, float y) {
+        context.getMatrices().push();
+        context.getMatrices().translate(x, y, 0);
+        context.getMatrices().scale(1.2f, 1.2f, 1);
+        context.drawCenteredTextWithShadow(renderer, title, 0, 0, 0xFFFFFFFF);
+        context.getMatrices().pop();
+    }
+
     private static final class Session {
+        private boolean smartWaypoints = WaypointsPlusClient.config().settings().smartWaypoints;
+        private int smartDistance = WaypointsPlusClient.config().settings().smartDistance;
         private WaypointSettingsSnapshot baseline =
                 WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
         private boolean dirty;
 
         private void saved() {
+            smartWaypoints = WaypointsPlusClient.config().settings().smartWaypoints;
+            smartDistance = WaypointsPlusClient.config().settings().smartDistance;
             baseline = WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());
             dirty = false;
         }

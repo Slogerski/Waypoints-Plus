@@ -3,3 +3,7 @@ plugins {
 }
 
 apply from: rootProject.file("gradle/fabric-official-platform.gradle")
+
+loom {
+    accessWidenerPath = file("src/main/resources/waypointsplus.accesswidener")
+}

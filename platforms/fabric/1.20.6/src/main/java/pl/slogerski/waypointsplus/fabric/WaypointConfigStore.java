@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,22 +72,24 @@ final class WaypointConfigStore {
 
     long waypointRevision() { return waypointRevision; }
 
-    void addWaypoint(String name, String serverKey, String dimension, int x, int y, int z, String colorArgb) {
-        addWaypointToProfile(name, serverKey, activeProfile(serverKey), dimension, x, y, z, colorArgb);
+    UUID addWaypoint(String name, String serverKey, String dimension, int x, int y, int z, String colorArgb) {
+        return addWaypointToProfile(name, serverKey, activeProfile(serverKey), dimension, x, y, z, colorArgb);
     }
 
-    void addWaypointToProfile(String name, String serverKey, String profile, String dimension,
+    UUID addWaypointToProfile(String name, String serverKey, String profile, String dimension,
                               int x, int y, int z, String colorArgb) {
         ensureServerLoaded(serverKey);
-        if (!waypointWritable || !profilesWritable) return;
+        if (!waypointWritable || !profilesWritable) return null;
         ServerProfiles state = profileState(serverKey);
         if (!state.names.contains(profile)) {
             state.names.add(profile);
             saveProfiles();
         }
-        waypoints.add(new Waypoint(UUID.randomUUID(), name, normalizeServerKey(serverKey), profile,
+        UUID id = UUID.randomUUID();
+        waypoints.add(new Waypoint(id, name, normalizeServerKey(serverKey), profile,
                 dimension, x, y, z, colorArgb));
         saveWaypoints();
+        return id;
     }
 
     List<String> profiles(String serverKey) { return List.copyOf(profileState(serverKey).names); }
@@ -156,9 +159,10 @@ final class WaypointConfigStore {
         state.names.remove(index);
         if (state.activeIndex > index) state.activeIndex--;
         else if (state.activeIndex == index) state.activeIndex = Math.max(0, index - 1);
-        waypoints.removeIf(waypoint -> name.equals(waypoint.profile()));
+        Set<UUID> removed = new HashSet<>();
+        waypoints.removeIf(waypoint -> name.equals(waypoint.profile()) && removed.add(waypoint.id()));
         saveProfiles();
-        saveWaypoints();
+        if (saveWaypoints()) WaypointPresetStore.forget(removed);
     }
 
     void claimLegacy(String serverKey) {
@@ -195,35 +199,50 @@ final class WaypointConfigStore {
     void removeWaypoint(UUID id) {
         ensureServerLoaded(ServerScope.current());
         if (!waypointWritable) return;
-        if (waypoints.removeIf(waypoint -> waypoint.id().equals(id))) saveWaypoints();
+        if (waypoints.removeIf(waypoint -> waypoint.id().equals(id)) && saveWaypoints()) {
+            WaypointPresetStore.forget(Set.of(id));
+        }
     }
 
     void removeWaypoints(java.util.Set<UUID> ids) {
         ensureServerLoaded(ServerScope.current());
         if (!waypointWritable) return;
-        if (!ids.isEmpty() && waypoints.removeIf(waypoint -> ids.contains(waypoint.id()))) saveWaypoints();
+        if (!ids.isEmpty() && waypoints.removeIf(waypoint -> ids.contains(waypoint.id())) && saveWaypoints()) {
+            WaypointPresetStore.forget(ids);
+        }
     }
 
-    int importWaypoints(String serverKey, String profile, List<WaypointTransfer.Entry> imported) {
+    ImportResult importWaypoints(String serverKey, String profile, WaypointPresetTransfer.Payload imported) {
         ensureServerLoaded(serverKey);
-        if (!waypointWritable) return 0;
-        java.util.Set<WaypointTransfer.Entry> existingEntries = new java.util.HashSet<>();
+        if (!waypointWritable) return new ImportResult(0, false);
+        Set<ImportKey> existingEntries = new HashSet<>();
         for (Waypoint existing : waypoints) {
             if (profile.equals(existing.profile())) {
-                existingEntries.add(new WaypointTransfer.Entry(existing.name(), existing.x(), existing.y(), existing.z(),
-                        existing.dimension(), existing.colorArgb().replace("#", "").toUpperCase(java.util.Locale.ROOT)));
+                WaypointTransfer.Entry entry = new WaypointTransfer.Entry(existing.name(), existing.x(), existing.y(), existing.z(),
+                        existing.dimension(), existing.colorArgb().replace("#", "").toUpperCase(java.util.Locale.ROOT));
+                existingEntries.add(new ImportKey(entry, new WaypointPresetStore.Selection(
+                        WaypointPresetStore.selected(existing.id()), WaypointPresetStore.item(existing.id()))));
             }
         }
         int added = 0;
-        for (WaypointTransfer.Entry entry : imported) {
-            if (!existingEntries.add(entry)) continue;
-            waypoints.add(new Waypoint(UUID.randomUUID(), entry.name(), normalizeServerKey(serverKey), profile,
+        Map<UUID, WaypointPresetStore.Selection> selections = new HashMap<>();
+        for (int i = 0; i < imported.entries().size(); i++) {
+            WaypointTransfer.Entry entry = imported.entries().get(i);
+            WaypointPresetStore.Selection preset = imported.selections().get(i);
+            if (!existingEntries.add(new ImportKey(entry, preset))) continue;
+            UUID id = UUID.randomUUID();
+            waypoints.add(new Waypoint(id, entry.name(), normalizeServerKey(serverKey), profile,
                     entry.dimension(), entry.x(), entry.y(), entry.z(), entry.colorArgb()));
+            if (!"default".equals(preset.preset())) selections.put(id, preset);
             added++;
         }
         if (added > 0) saveWaypoints();
-        return added;
+        boolean stylesSaved = WaypointPresetStore.assignAll(selections);
+        return new ImportResult(added, stylesSaved);
     }
+
+    record ImportResult(int added, boolean stylesSaved) { }
+    private record ImportKey(WaypointTransfer.Entry entry, WaypointPresetStore.Selection preset) { }
 
     boolean addQuickWaypoint(String serverKey, WaypointTransfer.Entry entry) {
         ensureServerLoaded(serverKey);

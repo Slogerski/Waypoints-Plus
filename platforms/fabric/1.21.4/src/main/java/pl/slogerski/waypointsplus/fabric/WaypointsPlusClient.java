@@ -36,6 +36,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
     public void onInitializeClient() {
         config = new WaypointConfigStore();
         config.load();
+        WaypointPresetStore.initialize();
         FightAlertManager.load();
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
             if (world.isClient() && entity instanceof PlayerEntity opponent) FightAlertManager.recordOpponent(opponent);
@@ -68,7 +69,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 lastPlayerZ = position.getZ();
                 hasPlayerPosition = true;
                 boolean playerDead = client.player.getHealth() <= 0.0F;
-                if (playerDead && !wasPlayerDead && client.world != null) {
+                if (playerDead && !wasPlayerDead && config.settings().deathWaypoints && client.world != null) {
                     config.addWaypointToProfile(WaypointNames.death(config.settings().language),
                             ServerScope.current(), "Death Waypoints",
                             client.world.getRegistryKey().getValue().toString(),
@@ -111,6 +112,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            WaypointHudRenderer.clear();
             if (hasPlayerPosition) {
                 config.savePlayerPosition(lastPlayerX, lastPlayerY, lastPlayerZ);
                 hasPlayerPosition = false;

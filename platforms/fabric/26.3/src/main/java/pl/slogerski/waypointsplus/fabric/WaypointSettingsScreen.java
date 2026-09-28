@@ -305,6 +305,19 @@ final class WaypointSettingsScreen extends Screen {
         if (session.dirty) session.baseline.restore(WaypointsPlusClient.config().settings());
         Minecraft.getInstance().gui.setScreen(parent);
     }
+    void savePresetPreference() {
+        WaypointSettings settings = WaypointsPlusClient.config().settings();
+        WaypointSettingsSnapshot current = WaypointSettingsSnapshot.capture(settings);
+        session.baseline.restore(settings);
+        try { WaypointsPlusClient.config().saveSettings(); }
+        finally { current.restore(settings); }
+    }
+
+    static void drawLargeTitle(GuiGraphicsExtractor graphics, net.minecraft.client.gui.Font font,
+                               Component title, float x, float y) {
+        AlertScreen.drawTitle(graphics, font, title, x, y);
+    }
+
     private static final class Session {
         private WaypointSettingsSnapshot baseline =
                 WaypointSettingsSnapshot.capture(WaypointsPlusClient.config().settings());

@@ -2,8 +2,8 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
 
 final class CreateWaypointScreen extends WaypointFormScreen {
     CreateWaypointScreen(Screen parent) {
@@ -25,6 +25,9 @@ final class CreateWaypointScreen extends WaypointFormScreen {
     @Override protected void persist(String name, int x, int y, int z, String color, String dimension) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) throw new IllegalStateException();
-        WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(), dimension, x, y, z, color);
+        var id = WaypointsPlusClient.config().addWaypoint(name, ServerScope.current(), dimension, x, y, z, color);
+        if (!WaypointPresetStore.assign(id, selectedPreset, selectedItem)) {
+            org.slf4j.LoggerFactory.getLogger("waypointsplus").warn("Cannot assign waypoint preset; using classic appearance");
+        }
     }
 }

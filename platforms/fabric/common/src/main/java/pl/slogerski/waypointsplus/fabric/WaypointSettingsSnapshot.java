@@ -6,6 +6,7 @@ record WaypointSettingsSnapshot(
         boolean showCoordinates,
         boolean showDistance,
         boolean laserEnabled,
+        boolean deathWaypoints,
         boolean menuBackground,
         boolean crossDimensionWaypoints,
         String language,
@@ -14,7 +15,9 @@ record WaypointSettingsSnapshot(
         int textArgb,
         boolean matchTextToBorder,
         int backgroundArgb,
-        int markerTintPercent
+        int markerTintPercent,
+        boolean smartWaypoints,
+        int smartDistance
 ) {
     static WaypointSettingsSnapshot capture(WaypointSettings settings) {
         return new WaypointSettingsSnapshot(
@@ -23,6 +26,7 @@ record WaypointSettingsSnapshot(
                 settings.showCoordinates,
                 settings.showDistance,
                 settings.laserEnabled,
+                settings.deathWaypoints,
                 settings.menuBackground,
                 settings.crossDimensionWaypoints,
                 settings.language,
@@ -31,7 +35,9 @@ record WaypointSettingsSnapshot(
                 settings.textArgb,
                 settings.matchTextToBorder,
                 settings.backgroundArgb,
-                settings.markerTintPercent
+                settings.markerTintPercent,
+                settings.smartWaypoints,
+                settings.smartDistance
         );
     }
 
@@ -41,6 +47,7 @@ record WaypointSettingsSnapshot(
         settings.showCoordinates = showCoordinates;
         settings.showDistance = showDistance;
         settings.laserEnabled = laserEnabled;
+        settings.deathWaypoints = deathWaypoints;
         settings.menuBackground = menuBackground;
         settings.crossDimensionWaypoints = crossDimensionWaypoints;
         settings.language = language;
@@ -50,5 +57,7 @@ record WaypointSettingsSnapshot(
         settings.matchTextToBorder = matchTextToBorder;
         settings.backgroundArgb = backgroundArgb;
         settings.markerTintPercent = markerTintPercent;
+        settings.smartWaypoints = smartWaypoints;
+        settings.smartDistance = smartDistance;
     }
 }

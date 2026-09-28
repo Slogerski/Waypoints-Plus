@@ -1,9 +1,9 @@
 package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class AdvancedSettingsScreen extends Screen {
-    private static final int CONTENT_HEIGHT = 205;
+    private static final int CONTENT_HEIGHT = 305;
     private static final int SCROLL_STEP = 18;
     private static final int SCROLL_TRACK = 0x805A5A5A;
     private static final int SCROLL_THUMB = 0xFF969696;
@@ -26,6 +26,7 @@ final class AdvancedSettingsScreen extends Screen {
     private TextFieldWidget textColor;
     private TextFieldWidget backgroundColor;
     private TextFieldWidget markerTint;
+    private TextFieldWidget smartDistance;
     private int left;
     private int top;
     private double scrollOffset;
@@ -43,22 +44,32 @@ final class AdvancedSettingsScreen extends Screen {
         left = width / 2 - 158;
         top = Math.max(2, (height - 258) / 2);
         WaypointSettings settings = WaypointsPlusClient.config().settings();
+        scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Presets", "Szablony")),
+                button -> client.setScreen(new WaypointPresetsScreen(this)))
+                .dimensions(left + 10, 0, 296, 18).build(), 6);
         scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Fights Alerts", "Alerty walki")),
                 button -> client.setScreen(new FightAlertsScreen(this)))
-                .dimensions(left + 10, 0, 296, 18).build(), 6);
-        scrollChild(ButtonWidget.builder(Text.literal(settings.menuBackground ? "ON" : "OFF"),
-                button -> toggleMenuBackground(button))
-                .dimensions(left + 224, 0, 82, 18).build(), 31);
-        scrollChild(ButtonWidget.builder(Text.literal(settings.crossDimensionWaypoints ? "ON" : "OFF"),
-                button -> toggleCrossDimensionWaypoints(button))
+                .dimensions(left + 10, 0, 296, 18).build(), 31);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.deathWaypoints ? "ON" : "OFF"),
+                button -> {
+                    settings.deathWaypoints = !settings.deathWaypoints;
+                    button.setMessage(Text.literal(settings.deathWaypoints ? "ON" : "OFF"));
+                    markDirty();
+                })
                 .dimensions(left + 224, 0, 82, 18).build(), 56);
-        scale = field(left + 224, 81, 82, String.valueOf(settings.scale), "Scale");
+        scrollChild(ButtonWidget.builder(Text.literal(settings.menuBackground ? "ON" : "OFF"),
+                button -> toggleMenuBackground((ButtonWidget) button))
+                .dimensions(left + 224, 0, 82, 18).build(), 81);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.crossDimensionWaypoints ? "ON" : "OFF"),
+                button -> toggleCrossDimensionWaypoints((ButtonWidget) button))
+                .dimensions(left + 224, 0, 82, 18).build(), 106);
+        scale = field(left + 224, 131, 82, String.valueOf(settings.scale), "Scale");
         scale.setMaxLength(5);
         scale.setChangedListener(value -> applyScale());
-        textColor = field(left + 224, 106, 82, String.format("%08X", settings.textArgb), "Text");
+        textColor = field(left + 224, 156, 82, String.format("%08X", settings.textArgb), "Text");
         textColor.setMaxLength(9);
         textColor.setChangedListener(value -> applyArgb(value, true));
-        backgroundColor = field(left + 224, 131, 82, String.format("%08X", settings.backgroundArgb), "Background");
+        backgroundColor = field(left + 224, 181, 82, String.format("%08X", settings.backgroundArgb), "Background");
         backgroundColor.setMaxLength(9);
         backgroundColor.setChangedListener(value -> applyArgb(value, false));
         markerTint = new TextFieldWidget(textRenderer, left + 229, 0, 72, 10,
@@ -68,16 +79,25 @@ final class AdvancedSettingsScreen extends Screen {
         markerTint.setTextPredicate(AdvancedSettingsScreen::isValidTint);
         markerTint.setText(Integer.toString(settings.markerTintPercent));
         markerTint.setChangedListener(value -> applyMarkerTint());
-        scrollChild(markerTint, 161);
+        scrollChild(markerTint, 211);
         scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(true))
-                .dimensions(left + 154, 0, 64, 18).build(), 106);
+                .dimensions(left + 154, 0, 64, 18).build(), 156);
         scrollChild(ButtonWidget.builder(Text.literal(UiText.get("Palette", "Paleta")),
                 button -> openColorPicker(false))
-                .dimensions(left + 154, 0, 64, 18).build(), 131);
+                .dimensions(left + 154, 0, 64, 18).build(), 181);
         scrollChild(ButtonWidget.builder(Text.literal(settings.matchTextToBorder ? "ON" : "OFF"),
-                button -> toggleTextBorderMatch(button))
-                .dimensions(left + 224, 0, 82, 18).build(), 181);
+                button -> toggleTextBorderMatch((ButtonWidget) button))
+                .dimensions(left + 224, 0, 82, 18).build(), 231);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.smartWaypoints ? "ON" : "OFF"), button -> {
+            settings.smartWaypoints = !settings.smartWaypoints;
+            button.setMessage(Text.literal(settings.smartWaypoints ? "ON" : "OFF"));
+            markDirty();
+        }).dimensions(left + 224, 0, 82, 18).build(), 256);
+        smartDistance = field(left + 224, 281, 82, Integer.toString(settings.smartDistance),
+                UiText.get("Grouping Distance", "Odległość grupowania"));
+        smartDistance.setMaxLength(6);
+        smartDistance.setChangedListener(this::applySmartDistance);
         fixedChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
                 .dimensions(left + 94, top + 224, 132, 20).build());
@@ -97,6 +117,10 @@ final class AdvancedSettingsScreen extends Screen {
     private void save() {
         settingsScreen.saveAdvanced();
         updateSaveButton();
+    }
+
+    void savePresetPreference() {
+        settingsScreen.savePresetPreference();
     }
 
     private void updateSaveButton() {
@@ -159,6 +183,18 @@ final class AdvancedSettingsScreen extends Screen {
         } catch (NumberFormatException ignored) { }
     }
 
+    private void applySmartDistance(String text) {
+        try {
+            int distance = Integer.parseInt(text);
+            if (distance < 1 || distance > 100000) return;
+            WaypointSettings settings = WaypointsPlusClient.config().settings();
+            if (settings.smartDistance != distance) {
+                settings.smartDistance = distance;
+                markDirty();
+            }
+        } catch (NumberFormatException ignored) { }
+    }
+
     private void applyArgb(String value, boolean text) {
         String hex = value.replace("#", "");
         if (hex.length() != 8) return;
@@ -205,21 +241,21 @@ final class AdvancedSettingsScreen extends Screen {
         }
     }
 
-    private void toggleMenuBackground(net.minecraft.client.gui.widget.ButtonWidget button) {
+    private void toggleMenuBackground(ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;
         button.setMessage(Text.literal(settings.menuBackground ? "ON" : "OFF"));
         markDirty();
     }
 
-    private void toggleCrossDimensionWaypoints(net.minecraft.client.gui.widget.ButtonWidget button) {
+    private void toggleCrossDimensionWaypoints(ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.crossDimensionWaypoints = !settings.crossDimensionWaypoints;
         button.setMessage(Text.literal(settings.crossDimensionWaypoints ? "ON" : "OFF"));
         markDirty();
     }
 
-    private void toggleTextBorderMatch(net.minecraft.client.gui.widget.ButtonWidget button) {
+    private void toggleTextBorderMatch(ButtonWidget button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.matchTextToBorder = !settings.matchTextToBorder;
         button.setMessage(Text.literal(settings.matchTextToBorder ? "ON" : "OFF"));
@@ -259,39 +295,45 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        renderBackground(matrices);
         DrawContext context = new DrawContext(matrices);
+        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
+                WaypointsPlusClient.config().settings().menuBackground)) {
+            super.renderBackground(matrices);
+        }
         GuiPalette.panel(context, left, top, left + 316, top + 256);
         int contentTop = viewportTop() - (int)Math.round(scrollOffset);
         context.enableScissor(left + 4, viewportTop(), left + 307, viewportBottom());
-        for (int y : new int[] {51, 76, 101, 126, 151, 176}) {
+        for (int y : new int[] {76, 101, 126, 151, 176, 201, 226, 251, 276}) {
             drawSeparator(context, left + 12, contentTop + y - 3);
         }
-        GuiPalette.input(context, left + 224, contentTop + 81, 82, 18);
-        GuiPalette.input(context, left + 224, contentTop + 106, 82, 18);
         GuiPalette.input(context, left + 224, contentTop + 131, 82, 18);
         GuiPalette.input(context, left + 224, contentTop + 156, 82, 18);
-        context.drawTextWithShadow(textRenderer, UiText.get("Blurred Background", "Rozmyte tło"),
-                left + 12, contentTop + 36, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Cross-dimensional", "Między wymiarami"),
+        GuiPalette.input(context, left + 224, contentTop + 181, 82, 18);
+        GuiPalette.input(context, left + 224, contentTop + 206, 82, 18);
+        GuiPalette.input(context, left + 224, contentTop + 281, 82, 18);
+        context.drawTextWithShadow(textRenderer, UiText.get("Death Waypoints", "Waypointy śmierci"),
                 left + 12, contentTop + 61, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, contentTop + 86, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Text", "Domyślny tekst"), left + 12, contentTop + 111, 0xFFD9E2F0);
-        context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, contentTop + 136, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Blurred Background", "Rozmyte tło"),
+                left + 12, contentTop + 86, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Cross-dimensional", "Między wymiarami"),
+                left + 12, contentTop + 111, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Scale", "Skala"), left + 12, contentTop + 136, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Text", "Domyślny tekst"), left + 12, contentTop + 161, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Default Background", "Domyślne tło"), left + 12, contentTop + 186, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Marker Tint (%)", "Zabarwienie znacznika (%)"),
-                left + 12, contentTop + 161, 0xFFD9E2F0);
+                left + 12, contentTop + 211, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Match Text To Border", "Dopasuj tekst do obramowania"),
-                left + 12, contentTop + 186, 0xFFD9E2F0);
+                left + 12, contentTop + 236, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Waypoint Grouping", "Grupowanie waypointów"),
+                left + 12, contentTop + 261, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Grouping Distance", "Odległość grupowania"),
+                left + 12, contentTop + 286, 0xFFD9E2F0);
         for (ScrollEntry entry : scrollWidgets) {
             if (entry.widget.visible) entry.widget.render(matrices, mouseX, mouseY, delta);
         }
         context.disableScissor();
         for (ClickableWidget widget : fixedWidgets) widget.render(matrices, mouseX, mouseY, delta);
-        matrices.push();
-        matrices.translate(width / 2.0f, top + 7.0f, 0.0f);
-        matrices.scale(1.2f, 1.2f, 1.0f);
-        context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
-        matrices.pop();
+        WaypointSettingsScreen.drawLargeTitle(context, textRenderer, title, width / 2.0f, top + 7.0f);
         drawScrollbar(context, mouseX, mouseY);
     }
 
@@ -384,8 +426,6 @@ final class AdvancedSettingsScreen extends Screen {
     }
 
     @Override public void renderBackground(MatrixStack matrices) {
-        if (pl.slogerski.waypointsplus.core.UiRenderBudget.shouldRenderBlur(this, width, height,
-                WaypointsPlusClient.config().settings().menuBackground)) super.renderBackground(matrices);
     }
 
     @Override public void close() {

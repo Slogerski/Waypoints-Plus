@@ -1,174 +1,357 @@
 package pl.slogerski.waypointsplus.fabric;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
-import net.minecraft.client.Camera;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.renderer.MultiBufferSource;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
-import org.joml.Quaternionf;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import pl.slogerski.waypointsplus.core.LaserVisibility;
 import pl.slogerski.waypointsplus.core.Waypoint;
-import pl.slogerski.waypointsplus.core.WaypointAppearance;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 final class WaypointHudRenderer {
-    private static final int FULL_BRIGHT = 0xF000F0;
+    private static final int LABEL_BUFFER_SIZE = 786432;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
-    private static final double VIEW_CULL_DOT = -0.15;
+    private static final List<PreparedWaypoint> VISIBLE_CLASSIC = new ArrayList<>();
+    private static final Map<String, PresetBatch> PRESETS = new LinkedHashMap<>();
+    private static final SmartWaypointGroups SMART_GROUPS = new SmartWaypointGroups();
+    private static final SmartWaypointRefresh SMART_REFRESH = new SmartWaypointRefresh();
+    private static final List<PreparedWaypoint> SMART_CANDIDATES = new ArrayList<>();
+    private static final List<SmartStack> SMART_STACKS = new ArrayList<>();
+    private static final WaypointPreset SMART_PRESET = WaypointPreset.designed();
+    private static final WaypointProjection PROJECTION = new WaypointProjection();
     private static long cachedRevision = Long.MIN_VALUE;
+    private static long cachedPresetRevision = Long.MIN_VALUE;
+    private static long cachedLayoutRevision = Long.MIN_VALUE;
     private static String cachedServerKey;
     private static String cachedProfile;
     private static String cachedDimension;
     private static boolean cachedCrossDimensionWaypoints;
+    private static int cachedSmartDistance;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
-    private static volatile PreparedFrame preparedFrame = emptyFrame();
+    private static volatile boolean resourcesChanged;
 
     private WaypointHudRenderer() { }
 
     static void register() {
-        LevelRenderEvents.END_EXTRACTION.register(WaypointHudRenderer::prepareFrame);
-        LevelRenderEvents.COLLECT_SUBMITS.register(WaypointHudRenderer::renderLasers);
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WaypointHudRenderer::renderLabels);
+        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(
+                new SimpleSynchronousResourceReloadListener() {
+                    @Override public Identifier getFabricId() {
+                        return Identifier.fromNamespaceAndPath("waypointsplus", "text_shaders");
+                    }
+                    @Override public void onResourceManagerReload(ResourceManager manager) {
+                        resourcesChanged = true;
+                    }
+                });
+        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.player == null || minecraft.level == null) return;
+            WaypointConfigStore store = WaypointsPlusClient.config();
+            WaypointSettings settings = store.settings();
+            if (!settings.enabled || !settings.laserEnabled) return;
+            String server = ServerScope.current();
+            prepare(store, server, store.activeProfile(server), minecraft.level.dimension().identifier().toString(), settings.crossDimensionWaypoints);
+            Camera camera = minecraft.gameRenderer.getMainCamera();
+            Vec3 position = camera.position();
+            int bottom = minecraft.level.getMinY(), top = bottom + minecraft.level.getHeight();
+            LaserVisibility view = LaserVisibility.fromCamera(camera.yRot(), camera.xRot(), position.x, position.y, position.z, bottom, top);
+            for (PreparedWaypoint waypoint : cachedWaypoints) if (view.isPotentiallyVisible(waypoint.target.x, waypoint.target.z)) {
+                drawLaser(context.poseStack(), context.submitNodeCollector(), position, waypoint.target,
+                        waypoint.label.marker(settings.markerArgb), bottom, top);
+            }
+        });
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(WaypointHudRenderer::render);
     }
 
-    private static void renderLasers(LevelRenderContext context) {
-        PreparedFrame frame = preparedFrame;
-        if (frame.lasers.isEmpty()) return;
-        PoseStack pose = context.poseStack();
-        SubmitNodeCollector submits = context.submitNodeCollector();
-        for (PreparedLaser laser : frame.lasers) {
-            drawLaser(pose, submits, frame.cameraPosition, laser.target, laser.color,
-                    frame.laserBottomY, frame.laserTopY);
-        }
+    static void clear() {
+        for (PresetBatch batch : PRESETS.values()) batch.close();
+        PRESETS.clear(); VISIBLE_CLASSIC.clear();
+        SMART_CANDIDATES.clear(); SMART_GROUPS.clear();
+        SMART_STACKS.clear(); SMART_REFRESH.reset();
+        cachedWaypoints = List.of();
+        cachedRevision = Long.MIN_VALUE;
+        cachedPresetRevision = Long.MIN_VALUE;
+        cachedLayoutRevision = Long.MIN_VALUE;
     }
 
-    private static void prepareFrame(LevelExtractionContext context) {
+    private static void render(LevelRenderContext context) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null) {
-            preparedFrame = emptyFrame();
-            return;
-        }
+        PoseStack matrices = context.poseStack();
+        if (minecraft.player == null || minecraft.level == null || matrices == null) return;
+        if (resourcesChanged) { resourcesChanged = false; clear(); }
         WaypointConfigStore store = WaypointsPlusClient.config();
         WaypointSettings settings = store.settings();
-        if (!settings.enabled) {
-            preparedFrame = emptyFrame();
-            return;
-        }
-
+        if (!settings.enabled) return;
         String dimension = minecraft.level.dimension().identifier().toString();
         String serverKey = ServerScope.current();
         String profile = store.activeProfile(serverKey);
         store.claimLegacy(serverKey);
-        Camera camera = context.camera();
+        prepare(store, serverKey, profile, dimension, settings.crossDimensionWaypoints);
+        Camera camera = minecraft.gameRenderer.getMainCamera();
         Vec3 cameraPos = camera.position();
-        int laserBottomY = settings.laserEnabled ? minecraft.level.getMinY() : 0;
-        int laserTopY = settings.laserEnabled ? laserBottomY + minecraft.level.getHeight() : 0;
+        net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers = context.bufferSource();
+        int bottomY = settings.laserEnabled ? minecraft.level.getMinY() : 0;
+        int topY = settings.laserEnabled ? bottomY + minecraft.level.getHeight() : 0;
         LaserVisibility laserView = settings.laserEnabled
                 ? LaserVisibility.fromCamera(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
-                        laserBottomY, laserTopY) : null;
-        List<PreparedLabel> labels = new ArrayList<>();
-        List<PreparedLaser> lasers = settings.laserEnabled ? new ArrayList<>() : List.of();
-        for (PreparedWaypoint prepared : activeWaypoints(store, serverKey, profile, dimension,
-                settings.crossDimensionWaypoints)) {
-            if (isInView(camera.yRot(), camera.xRot(), cameraPos.x, cameraPos.y, cameraPos.z,
-                    prepared.target())) {
-                labels.add(prepareLabel(minecraft, cameraPos, prepared.waypoint(), prepared.target(), settings));
-            }
-            if (laserView != null && laserView.isPotentiallyVisible(prepared.target().x, prepared.target().z)) {
-                lasers.add(new PreparedLaser(prepared.target(),
-                        parseArgb(prepared.waypoint().colorArgb(), settings.markerArgb)));
+                        bottomY, topY) : null;
+        double yaw = Math.toRadians(camera.yRot()), pitch = Math.toRadians(camera.xRot());
+        double cosPitch = Math.cos(pitch);
+        double viewX = -Math.sin(yaw) * cosPitch, viewY = -Math.sin(pitch), viewZ = Math.cos(yaw) * cosPitch;
+        VISIBLE_CLASSIC.clear();
+        double smartDistanceSquared = (double) settings.smartDistance * settings.smartDistance;
+        if (settings.smartWaypoints) {
+            if (cachedSmartDistance != settings.smartDistance) SMART_REFRESH.reset();
+            cachedSmartDistance = settings.smartDistance;
+            double playerX = minecraft.player.getX(), playerY = minecraft.player.getY(), playerZ = minecraft.player.getZ();
+            for (PreparedWaypoint prepared : cachedWaypoints) {
+                DisplayTarget target = prepared.target;
+                double dx = target.x - playerX, dy = target.y - playerY, dz = target.z - playerZ;
+                prepared.playerDistanceSquared = dx * dx + dy * dy + dz * dz;
+                boolean far = prepared.playerDistanceSquared > smartDistanceSquared;
+                if (prepared.smartDistanceKnown && prepared.smartFar != far) SMART_REFRESH.reset();
+                prepared.smartDistanceKnown = true;
+                prepared.smartFar = far;
             }
         }
-        preparedFrame = new PreparedFrame(List.copyOf(labels), List.copyOf(lasers),
-                cameraPos, new Quaternionf(camera.rotation()), laserBottomY, laserTopY);
-    }
-
-    private static PreparedLabel prepareLabel(Minecraft minecraft, Vec3 cameraPos, Waypoint waypoint,
-                                              DisplayTarget target, WaypointSettings settings) {
-        double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
-        double actualDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        double visibleDistance = Math.min(actualDistance, MAX_BILLBOARD_DISTANCE);
-        if (actualDistance > MAX_BILLBOARD_DISTANCE) {
-            double factor = MAX_BILLBOARD_DISTANCE / actualDistance;
-            dx *= factor;
-            dy *= factor;
-            dz *= factor;
+        long now = System.nanoTime();
+        boolean refreshSmart = SMART_REFRESH.due(settings.smartWaypoints, now);
+        if (refreshSmart) {
+            SMART_CANDIDATES.clear();
+            SMART_GROUPS.begin(minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight(),
+                    cachedWaypoints.size(), settings.smartDistance);
+            PROJECTION.begin(camera.getViewRotationProjectionMatrix(new Matrix4f()), new Matrix4f(),
+                    minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
         }
-        float distanceFactor = (float)Math.max(1.0, visibleDistance / 10.0);
-        float scale = 0.025f * settings.scale * distanceFactor;
-        String label = waypoint.name();
-        if (settings.showDistance) label += "  •  " + formatDistance(actualDistance);
-        if (settings.showCoordinates) label += "  " + Math.round(target.x) + " " + Math.round(target.y) + " " + Math.round(target.z);
-        Component text = Component.literal(label);
-        int textWidth = minecraft.font.width(text);
-        float x = -textWidth / 2.0f;
-        int color = parseArgb(waypoint.colorArgb(), settings.markerArgb);
-        int textColor = settings.matchTextToBorder ? color : settings.textArgb;
-        int background = settings.background
-                ? WaypointAppearance.backgroundArgb(waypoint, settings.backgroundArgb, color, settings.markerTintPercent)
-                : 0;
-        return new PreparedLabel(dx, dy, dz, scale, text, x, textWidth, color, textColor, background);
-    }
+        if (settings.smartWaypoints) {
+            for (SmartStack stack : SMART_STACKS) {
+                stack.near = false;
+                stack.rebuild = false;
+                if (refreshSmart) stack.visibleMembers = 0;
+            }
+        }
+        for (PresetBatch batch : PRESETS.values()) batch.visible.clear();
+        boolean hasLasers = false;
+        for (PreparedWaypoint prepared : cachedWaypoints) {
+            DisplayTarget target = prepared.target;
+            prepared.hidden = false;
+            prepared.compact = false;
+            if (refreshSmart) prepared.group = -1;
+            if (settings.smartWaypoints && prepared.stack != null
+                    && prepared.playerDistanceSquared <= smartDistanceSquared) prepared.stack.near = true;
+            double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
+            double lengthSquared = dx * dx + dy * dy + dz * dz;
+            double dot = dx * viewX + dy * viewY + dz * viewZ;
+            if (prepared.batch == null && dot < 0 && dot * dot > 0.0225 * lengthSquared) continue;
+            double distance = Math.sqrt(lengthSquared);
+            prepared.distance = distance;
+            double visibleDistance = Math.min(distance, MAX_BILLBOARD_DISTANCE);
+            float scale = 0.025f * settings.scale * (float) Math.max(1, visibleDistance / 10);
+            prepared.updated = !settings.smartWaypoints || prepared.batch == null || !prepared.batch.preset.icon || dot < 0;
+            if (prepared.updated) prepared.label.update(minecraft.font, settings, distance);
+            if (prepared.batch != null && dot < -0.15 * distance && visibleDistance > 0
+                    && -dot > prepared.label.radius() * scale * distance / visibleDistance) continue;
+            if (distance > MAX_BILLBOARD_DISTANCE) {
+                double factor = MAX_BILLBOARD_DISTANCE / distance;
+                dx *= factor; dy *= factor; dz *= factor;
+            }
+            prepared.label.matrix.set(matrices.last().pose()).translate((float) dx, (float) dy, (float) dz)
+                    .rotate(camera.rotation()).scale(scale, -scale, scale);
+            if (prepared.batch == null) {
+                VISIBLE_CLASSIC.add(prepared);
+                if (refreshSmart) collectSmart(prepared);
+            }
+            else {
+                prepared.batch.visible.add(prepared);
+                if (refreshSmart) collectSmart(prepared);
+            }
+        }
+        if (refreshSmart) rebuildSmart(minecraft, settings);
+        if (settings.smartWaypoints) {
+            VISIBLE_CLASSIC.removeIf(prepared -> prepared.stack != null && !prepared.stack.near);
+            for (PresetBatch batch : PRESETS.values()) {
+                for (PreparedWaypoint prepared : batch.visible) {
+                    SmartStack stack = prepared.stack;
+                    if (stack != null && !stack.near) {
+                        if (stack.representative != prepared) { prepared.hidden = true; continue; }
+                        prepared.compact = true;
+                        updateSmartLabel(prepared, stack.nearest, stack.members, minecraft, settings);
+                    }
+                }
+                batch.visible.removeIf(prepared -> prepared.hidden);
+                for (PreparedWaypoint prepared : batch.visible) {
+                    if (!prepared.compact && !prepared.updated) prepared.label.update(minecraft.font, settings, prepared.distance);
+                }
+            }
+        }
 
-    private static void renderLabels(LevelRenderContext context) {
-        PreparedFrame frame = preparedFrame;
-        if (frame.labels.isEmpty()) return;
-        Minecraft minecraft = Minecraft.getInstance();
-        PoseStack pose = context.poseStack();
-        MultiBufferSource.BufferSource buffers = context.bufferSource();
-
-        for (PreparedLabel label : frame.labels) {
-            pose.pushPose();
-            pose.translate(label.dx, label.dy, label.dz);
-            pose.mulPose(frame.cameraRotation);
-            pose.scale(label.scale, -label.scale, label.scale);
-            drawRoundedPanel(buffers.getBuffer(RenderTypes.textBackgroundSeeThrough()), pose.last().pose(),
-                    label.x - 3.0f, -7.0f, label.x + label.textWidth + 3.0f, 8.0f,
-                    label.background, label.color);
-            pose.popPose();
+        for (PreparedWaypoint prepared : VISIBLE_CLASSIC) prepared.label.drawPanel(buffers);
+        for (PresetBatch batch : PRESETS.values()) {
+            for (PreparedWaypoint prepared : batch.visible) prepared.renderLabel().drawPanel(buffers);
         }
         buffers.endBatch(RenderTypes.textBackgroundSeeThrough());
-
-        for (PreparedLabel label : frame.labels) {
-            pose.pushPose();
-            pose.translate(label.dx, label.dy, label.dz);
-            pose.mulPose(frame.cameraRotation);
-            pose.scale(label.scale, -label.scale, label.scale);
-            minecraft.font.drawInBatch(label.text.getVisualOrderText(), label.x, -3.0f, label.textColor, false,
-                    pose.last().pose(), buffers, Font.DisplayMode.SEE_THROUGH, 0, FULL_BRIGHT);
-            pose.popPose();
+        MultiBufferSource textBuffers = buffers;
+        for (PresetBatch batch : PRESETS.values()) {
+            if (batch.preset.icon && !batch.iconPrepared && !batch.visible.isEmpty()) {
+                batch.iconPrepared = true;
+                batch.icon = new WaypointPresetIcon(batch.preset);
+                break;
+            }
+        }
+        for (PresetBatch batch : PRESETS.values()) {
+            if (batch.icon == null || batch.visible.isEmpty()) continue;
+            for (PreparedWaypoint prepared : batch.visible) {
+                WaypointPreset layout = prepared.compact ? SMART_PRESET : batch.preset;
+                batch.icon.draw(prepared.label.matrix, textBuffers, layout.iconX, layout.iconY, layout.iconScale);
+            }
+        }
+        if (!PRESETS.isEmpty()) buffers.endBatch();
+        for (PreparedWaypoint prepared : VISIBLE_CLASSIC) prepared.label.drawText(minecraft.font, textBuffers);
+        for (PresetBatch batch : PRESETS.values()) {
+            for (PreparedWaypoint prepared : batch.visible) prepared.renderLabel().drawText(minecraft.font, textBuffers);
         }
         buffers.endBatch();
     }
 
-    private static void drawRoundedPanel(VertexConsumer vertices, Matrix4fc matrix,
-                                         float left, float top, float right, float bottom,
-                                         int background, int border) {
-        if ((background >>> 24) != 0) {
-            quad(vertices, matrix, left + 2, top + 1, right - 2, top + 2, 0.01f, background);
-            quad(vertices, matrix, left + 1, top + 2, right - 1, bottom - 2, 0.01f, background);
-            quad(vertices, matrix, left + 2, bottom - 2, right - 2, bottom - 1, 0.01f, background);
+    private static void rebuildSmart(Minecraft minecraft, WaypointSettings settings) {
+        for (PreparedWaypoint prepared : SMART_CANDIDATES) {
+            SmartStack stack = prepared.stack;
+            if (stack != null && stack.visibleMembers == stack.members) stack.rebuild = true;
         }
-        quad(vertices, matrix, left + 2, top, right - 2, top + 1, 0.01f, border);
-        quad(vertices, matrix, left + 2, bottom - 1, right - 2, bottom, 0.01f, border);
-        quad(vertices, matrix, left, top + 2, left + 1, bottom - 2, 0.01f, border);
-        quad(vertices, matrix, right - 1, top + 2, right, bottom - 2, 0.01f, border);
-        quad(vertices, matrix, left + 1, top + 1, left + 2, top + 2, 0.01f, border);
-        quad(vertices, matrix, right - 2, top + 1, right - 1, top + 2, 0.01f, border);
-        quad(vertices, matrix, left + 1, bottom - 2, left + 2, bottom - 1, 0.01f, border);
-        quad(vertices, matrix, right - 2, bottom - 2, right - 1, bottom - 1, 0.01f, border);
+        SMART_CANDIDATES.removeIf(prepared -> prepared.stack != null && !prepared.stack.rebuild);
+        for (PreparedWaypoint prepared : cachedWaypoints) {
+            if (prepared.stack != null && prepared.stack.rebuild) prepared.stack = null;
+        }
+        SMART_STACKS.removeIf(stack -> stack.rebuild);
+        PreparedWaypoint[] candidatesByGroup = new PreparedWaypoint[SMART_CANDIDATES.size()];
+        for (PreparedWaypoint prepared : SMART_CANDIDATES) {
+            prepared.group = SMART_GROUPS.add(prepared.screenLeft, prepared.screenTop,
+                    prepared.screenRight, prepared.screenBottom, Math.sqrt(prepared.playerDistanceSquared),
+                    prepared.batch != null && prepared.batch.preset.icon);
+            if (prepared.group >= 0) candidatesByGroup[prepared.group] = prepared;
+        }
+        SMART_CANDIDATES.removeIf(prepared -> prepared.group < 0);
+        SMART_GROUPS.finish();
+        for (PreparedWaypoint prepared : SMART_CANDIDATES) {
+            if (!SMART_GROUPS.collapsed(prepared.group) || !SMART_GROUPS.representative(prepared.group)) continue;
+            updateSmartLabel(prepared, candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)],
+                    SMART_GROUPS.groupSize(prepared.group), minecraft, settings);
+            WaypointLabel label = prepared.smartLabel;
+            if (PROJECTION.project(label.matrix, label.left(), label.top(), label.right() - label.left(), label.bottom() - label.top())) {
+                SMART_GROUPS.includeStackBounds(prepared.group, PROJECTION.left, PROJECTION.top, PROJECTION.right, PROJECTION.bottom);
+            }
+        }
+        SMART_GROUPS.finish();
+        SmartStack[] stacks = new SmartStack[candidatesByGroup.length];
+        for (PreparedWaypoint prepared : SMART_CANDIDATES) {
+            if (!SMART_GROUPS.collapsed(prepared.group)) continue;
+            int representative = SMART_GROUPS.representativeIndex(prepared.group);
+            if (stacks[representative] == null) {
+                stacks[representative] = new SmartStack(candidatesByGroup[representative],
+                        candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)]);
+                SMART_STACKS.add(stacks[representative]);
+            }
+            prepared.stack = stacks[representative];
+            prepared.stack.members++;
+        }
+    }
+
+    private static void updateSmartLabel(PreparedWaypoint prepared, PreparedWaypoint nearest, int count,
+                                         Minecraft minecraft, WaypointSettings settings) {
+        String name = nearest.waypoint.name() + " (" + count + ")";
+        if (prepared.smartLabel == null || !name.equals(prepared.smartLabelName)) {
+            Waypoint original = nearest.waypoint;
+            Waypoint grouped = new Waypoint(original.id(), name, original.serverKey(), original.profile(),
+                    original.dimension(), original.x(), original.y(), original.z(), original.colorArgb());
+            DisplayTarget target = nearest.target;
+            prepared.smartLabel = new WaypointLabel(grouped, target.x, target.y, target.z, SMART_PRESET);
+            prepared.smartLabelName = name;
+        }
+        prepared.smartLabel.update(minecraft.font, settings, nearest.distance);
+        prepared.smartLabel.matrix.set(prepared.label.matrix);
+    }
+
+    private static void collectSmart(PreparedWaypoint prepared) {
+        WaypointPreset preset = prepared.batch == null ? null : prepared.batch.preset;
+        boolean hasIcon = preset != null && preset.icon;
+        float left = hasIcon ? preset.iconX : prepared.label.left();
+        float top = hasIcon ? preset.iconY : prepared.label.top();
+        float width = hasIcon ? 16 * preset.iconScale : prepared.label.right() - left;
+        float height = hasIcon ? 16 * preset.iconScale : prepared.label.bottom() - top;
+        if (!PROJECTION.project(prepared.label.matrix, left, top, width, height)) return;
+        prepared.screenLeft = PROJECTION.left; prepared.screenTop = PROJECTION.top;
+        prepared.screenRight = PROJECTION.right; prepared.screenBottom = PROJECTION.bottom;
+        SMART_CANDIDATES.add(prepared);
+        if (prepared.stack != null && SMART_GROUPS.visibleBounds(PROJECTION.left, PROJECTION.top,
+                PROJECTION.right, PROJECTION.bottom)) prepared.stack.visibleMembers++;
+    }
+
+    private static void prepare(WaypointConfigStore store, String serverKey, String profile,
+                                String dimension, boolean crossDimensionWaypoints) {
+        long revision = store.waypointRevision(), presetRevision = WaypointPresetStore.revision();
+        if (revision == cachedRevision && presetRevision == cachedPresetRevision && serverKey.equals(cachedServerKey)
+                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)
+                && crossDimensionWaypoints == cachedCrossDimensionWaypoints) return;
+        Map<String, PresetBatch> previous = new LinkedHashMap<>(PRESETS);
+        long layoutRevision = WaypointPresetStore.layoutRevision();
+        if (layoutRevision != cachedLayoutRevision) {
+            for (PresetBatch batch : previous.values()) batch.close();
+            previous.clear();
+        }
+        PRESETS.clear();
+        List<PreparedWaypoint> prepared = new ArrayList<>();
+        Map<String, WaypointPreset> definitions = new java.util.HashMap<>();
+        for (Waypoint waypoint : store.waypoints()) {
+            if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
+            double scale = WaypointDimensionProjection.scale(dimension, waypoint.dimension(), crossDimensionWaypoints);
+            if (Double.isNaN(scale)) continue;
+            DisplayTarget target = new DisplayTarget(waypoint.x() * scale, waypoint.y(), waypoint.z() * scale);
+            String presetId = WaypointPresetStore.selected(waypoint.id());
+            PresetBatch batch = null;
+            if (!"default".equals(presetId)) {
+                WaypointPreset definition = definitions.computeIfAbsent(presetId, WaypointPresetStore::find);
+                String item = definition != null && definition.icon && !definition.pngIcon
+                        ? WaypointPresetStore.item(waypoint.id()) : "";
+                String batchKey = presetId + "|" + item;
+                batch = PRESETS.get(batchKey);
+                if (batch == null) {
+                    batch = previous.remove(batchKey);
+                    if (batch == null) {
+                        if (definition != null) {
+                            WaypointPreset preset = item.isEmpty() ? definition : WaypointPresetStore.copy(definition);
+                            if (!item.isEmpty()) preset.item = item;
+                            batch = new PresetBatch(preset);
+                        }
+                    }
+                    if (batch != null) PRESETS.put(batchKey, batch);
+                }
+            }
+            prepared.add(new PreparedWaypoint(waypoint, target, batch,
+                    new WaypointLabel(waypoint, target.x, target.y, target.z, batch == null ? null : batch.preset)));
+        }
+        for (PresetBatch batch : previous.values()) batch.close();
+        SMART_STACKS.clear(); SMART_CANDIDATES.clear(); SMART_REFRESH.reset();
+        cachedWaypoints = List.copyOf(prepared);
+        cachedRevision = store.waypointRevision(); cachedPresetRevision = presetRevision;
+        cachedLayoutRevision = layoutRevision;
+        cachedServerKey = serverKey; cachedProfile = profile; cachedDimension = dimension;
+        cachedCrossDimensionWaypoints = crossDimensionWaypoints;
     }
 
     private static void drawLaser(PoseStack pose, SubmitNodeCollector submits, Vec3 cameraPos,
@@ -193,88 +376,48 @@ final class WaypointHudRenderer {
         pose.popPose();
     }
 
-    private static void quad(VertexConsumer vertices, Matrix4fc matrix, float left, float top,
-                             float right, float bottom, float z, int color) {
-        vertices.addVertex(matrix, left, top, z).setColor(color).setLight(FULL_BRIGHT);
-        vertices.addVertex(matrix, left, bottom, z).setColor(color).setLight(FULL_BRIGHT);
-        vertices.addVertex(matrix, right, bottom, z).setColor(color).setLight(FULL_BRIGHT);
-        vertices.addVertex(matrix, right, top, z).setColor(color).setLight(FULL_BRIGHT);
-    }
-
-    private static List<PreparedWaypoint> activeWaypoints(WaypointConfigStore store, String serverKey,
-                                                          String profile, String dimension,
-                                                          boolean crossDimensionWaypoints) {
-        long revision = store.waypointRevision();
-        if (revision == cachedRevision && serverKey.equals(cachedServerKey)
-                && profile.equals(cachedProfile) && dimension.equals(cachedDimension)
-                && crossDimensionWaypoints == cachedCrossDimensionWaypoints) {
-            return cachedWaypoints;
-        }
-        List<PreparedWaypoint> prepared = new ArrayList<>();
-        for (Waypoint waypoint : store.waypoints()) {
-            if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
-            DisplayTarget target = convert(waypoint, dimension, crossDimensionWaypoints);
-            if (target != null) prepared.add(new PreparedWaypoint(waypoint, target));
-        }
-        cachedRevision = revision;
-        cachedServerKey = serverKey;
-        cachedProfile = profile;
-        cachedDimension = dimension;
-        cachedCrossDimensionWaypoints = crossDimensionWaypoints;
-        cachedWaypoints = List.copyOf(prepared);
-        return cachedWaypoints;
-    }
-
-    private static boolean isInView(float yawDegrees, float pitchDegrees,
-                                    double cameraX, double cameraY, double cameraZ,
-                                    DisplayTarget target) {
-        double dx = target.x - cameraX;
-        double dy = target.y + 1.5 - cameraY;
-        double dz = target.z - cameraZ;
-        double lengthSquared = dx * dx + dy * dy + dz * dz;
-        if (lengthSquared < 1.0e-6) return true;
-        double yaw = Math.toRadians(yawDegrees);
-        double pitch = Math.toRadians(pitchDegrees);
-        double cosPitch = Math.cos(pitch);
-        double dot = (dx * (-Math.sin(yaw) * cosPitch)
-                + dy * -Math.sin(pitch)
-                + dz * (Math.cos(yaw) * cosPitch)) / Math.sqrt(lengthSquared);
-        return dot >= VIEW_CULL_DOT;
-    }
-
-    private static DisplayTarget convert(Waypoint waypoint, String currentDimension,
-                                         boolean crossDimensionWaypoints) {
-        double scale = WaypointDimensionProjection.scale(
-                currentDimension, waypoint.dimension(), crossDimensionWaypoints);
-        if (Double.isNaN(scale)) return null;
-        return new DisplayTarget(waypoint.x() * scale, waypoint.y(), waypoint.z() * scale);
-    }
-
-    private static int parseArgb(String value, int fallback) {
-        try { return (int)Long.parseLong(value.replace("#", ""), 16); }
-        catch (RuntimeException ignored) { return fallback; }
-    }
-
-    private static String formatDistance(double distance) {
-        if (distance < 1000.0) return Math.round(distance) + " m";
-        String formatted = String.format(java.util.Locale.ROOT, "%.1f km", distance / 1000.0);
-        return UiText.get(formatted, formatted.replace('.', ','));
-    }
-
-    private static PreparedFrame emptyFrame() {
-        return new PreparedFrame(List.of(), List.of(), Vec3.ZERO, new Quaternionf(), 0, 0);
-    }
-
-    private record PreparedWaypoint(Waypoint waypoint, DisplayTarget target) { }
-
-    private record PreparedLabel(double dx, double dy, double dz, float scale, Component text,
-                                 float x, int textWidth, int color, int textColor, int background) { }
-
-    private record PreparedLaser(DisplayTarget target, int color) { }
-
-    private record PreparedFrame(List<PreparedLabel> labels, List<PreparedLaser> lasers,
-                                 Vec3 cameraPosition, Quaternionf cameraRotation,
-                                 int laserBottomY, int laserTopY) { }
-
     private record DisplayTarget(double x, double y, double z) { }
+    private static final class PreparedWaypoint {
+        final Waypoint waypoint;
+        final DisplayTarget target;
+        final PresetBatch batch;
+        final WaypointLabel label;
+        WaypointLabel smartLabel;
+        String smartLabelName;
+        SmartStack stack;
+        boolean hidden, compact, updated;
+        boolean smartDistanceKnown, smartFar;
+        int group;
+        double distance, playerDistanceSquared;
+        float screenLeft, screenTop, screenRight, screenBottom;
+
+        PreparedWaypoint(Waypoint waypoint, DisplayTarget target, PresetBatch batch, WaypointLabel label) {
+            this.waypoint = waypoint; this.target = target; this.batch = batch; this.label = label;
+        }
+
+        WaypointLabel renderLabel() { return compact ? smartLabel : label; }
+    }
+
+    private static final class SmartStack {
+        final PreparedWaypoint representative;
+        final PreparedWaypoint nearest;
+        boolean near, rebuild;
+        int members, visibleMembers;
+
+        SmartStack(PreparedWaypoint representative, PreparedWaypoint nearest) {
+            this.representative = representative;
+            this.nearest = nearest;
+        }
+    }
+
+    private static final class PresetBatch implements AutoCloseable {
+        final WaypointPreset preset;
+        WaypointPresetIcon icon;
+        boolean iconPrepared;
+        final List<PreparedWaypoint> visible = new ArrayList<>();
+        PresetBatch(WaypointPreset preset) {
+            this.preset = preset;
+        }
+        @Override public void close() { if (icon != null) icon.close(); visible.clear(); }
+    }
 }

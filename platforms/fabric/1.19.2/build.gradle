@@ -31,3 +31,11 @@ tasks.register("verifyLegacyGson", JavaExec) {
 tasks.named("check") {
     dependsOn(tasks.named("verifyLegacyGson"))
 }
+
+loom {
+    accessWidenerPath = file("src/main/resources/waypointsplus.accesswidener")
+}
+
+dependencies {
+    implementation include("org.joml:joml:1.10.9")
+}

@@ -14,12 +14,26 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 
-/** Compatibility facade for the DrawContext API added after Minecraft 1.19.2. */
 final class DrawContext {
     private final MatrixStack matrices;
 
     DrawContext(MatrixStack matrices) {
         this.matrices = matrices;
+    }
+
+    MatrixStack getMatrices() { return matrices; }
+
+    void drawItem(net.minecraft.item.ItemStack stack, int x, int y) {
+        MatrixStack modelView = RenderSystem.getModelViewStack();
+        modelView.push();
+        try {
+            modelView.multiplyPositionMatrix(matrices.peek().getPositionMatrix());
+            RenderSystem.applyModelViewMatrix();
+            MinecraftClient.getInstance().getItemRenderer().renderInGui(stack, x, y);
+        } finally {
+            modelView.pop();
+            RenderSystem.applyModelViewMatrix();
+        }
     }
 
     void fill(int left, int top, int right, int bottom, int color) {
@@ -29,10 +43,15 @@ final class DrawContext {
     void enableScissor(int left, int top, int right, int bottom) {
         var window = MinecraftClient.getInstance().getWindow();
         double scale = window.getScaleFactor();
-        int x = (int)Math.floor(left * scale);
-        int y = window.getFramebufferHeight() - (int)Math.ceil(bottom * scale);
-        int width = Math.max(0, (int)Math.ceil((right - left) * scale));
-        int height = Math.max(0, (int)Math.ceil((bottom - top) * scale));
+        org.joml.Matrix4f transform = PresetMatrices.read(matrices.peek().getPositionMatrix());
+        double x1 = (left * transform.m00() + top * transform.m10() + transform.m30()) * scale;
+        double y1 = (left * transform.m01() + top * transform.m11() + transform.m31()) * scale;
+        double x2 = (right * transform.m00() + bottom * transform.m10() + transform.m30()) * scale;
+        double y2 = (right * transform.m01() + bottom * transform.m11() + transform.m31()) * scale;
+        int x = (int)Math.floor(x1);
+        int y = window.getFramebufferHeight() - (int)Math.ceil(y2);
+        int width = Math.max(0, (int)Math.ceil(x2) - x);
+        int height = Math.max(0, (int)Math.ceil(y2) - (int)Math.floor(y1));
         RenderSystem.enableScissor(x, y, width, height);
     }
 

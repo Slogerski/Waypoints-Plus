@@ -11,10 +11,15 @@ final class EditWaypointScreen extends WaypointFormScreen {
         super(parent, Component.literal(UiText.get("Edit Waypoint", "Edytuj waypoint")), waypoint.name(),
                 waypoint.x(), waypoint.y(), waypoint.z(), waypoint.colorArgb(), waypoint.dimension());
         this.waypoint = waypoint;
+        selectedPreset = WaypointPresetStore.selected(waypoint.id());
+        selectedItem = WaypointPresetStore.item(waypoint.id());
     }
 
     @Override protected void persist(String name, int x, int y, int z, String color, String dimension) {
         WaypointsPlusClient.config().updateWaypoint(new Waypoint(waypoint.id(), name, waypoint.serverKey(),
                 waypoint.profile(), dimension, x, y, z, color));
+        if (!WaypointPresetStore.assign(waypoint.id(), selectedPreset, selectedItem)) {
+            org.slf4j.LoggerFactory.getLogger("waypointsplus").warn("Cannot update waypoint preset assignment");
+        }
     }
 }

@@ -9,10 +9,15 @@ final class WaypointSettings {
     boolean enabled = true;
     boolean background = true;
     boolean showCoordinates = false;
+    boolean hideFormCoordinates = false;
+    boolean defaultPresetFavorite = false;
     boolean showDistance = true;
     boolean laserEnabled = false;
+    boolean deathWaypoints = false;
     boolean menuBackground = true;
     boolean crossDimensionWaypoints = true;
+    boolean smartWaypoints = false;
+    int smartDistance = 250;
     boolean topDonateExpanded = true;
     String language = "en";
     float scale = 1.15f;
@@ -30,8 +35,11 @@ final class WaypointSettings {
         showCoordinates = false;
         showDistance = true;
         laserEnabled = false;
+        deathWaypoints = false;
         menuBackground = true;
         crossDimensionWaypoints = true;
+        smartWaypoints = false;
+        smartDistance = 250;
         language = "en";
         scale = 1.15f;
         markerArgb = 0xCCDBDBD3;
@@ -45,6 +53,7 @@ final class WaypointSettings {
         if (schemaVersion <= 0) schemaVersion = 1;
         scale = Math.max(0.25f, Math.min(4.0f, scale));
         markerTintPercent = Math.max(0, Math.min(100, markerTintPercent));
+        if (smartDistance < 1 || smartDistance > 100000) smartDistance = 250;
         if (!"pl".equals(language)) language = "en";
         if (waypointColorHistory == null) waypointColorHistory = new ArrayList<>();
         List<String> sanitizedColors = new ArrayList<>();

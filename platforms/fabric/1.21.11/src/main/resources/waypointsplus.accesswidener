@@ -11,3 +11,10 @@ accessible field net/minecraft/client/render/RenderSetup layeringTransform Lnet/
 accessible field net/minecraft/client/render/RenderSetup outputTarget Lnet/minecraft/client/render/OutputTarget;
 accessible field net/minecraft/client/render/RenderSetup textureTransform Lnet/minecraft/client/render/TextureTransform;
 accessible field net/minecraft/client/render/RenderSetup outlineMode Lnet/minecraft/client/render/RenderSetup$OutlineMode;
+
+accessible field net/minecraft/client/render/item/ItemRenderState layerCount I
+accessible field net/minecraft/client/render/item/ItemRenderState layers [Lnet/minecraft/client/render/item/ItemRenderState$LayerRenderState;
+accessible field net/minecraft/client/render/item/ItemRenderState$LayerRenderState transform Lnet/minecraft/client/render/model/json/Transformation;
+accessible field net/minecraft/client/render/item/ItemRenderState$LayerRenderState tints [I
+accessible field net/minecraft/client/render/item/ItemRenderState$LayerRenderState specialModelType Lnet/minecraft/client/render/item/model/special/SpecialModelRenderer;
+accessible field net/minecraft/client/render/item/ItemRenderState$LayerRenderState data Ljava/lang/Object;
