@@ -11,6 +11,8 @@ run/
 /waypoints.zip
 docs/
 *.class
+__pycache__/
+*.pyc
 *.log
 *.tmp
 *.bak

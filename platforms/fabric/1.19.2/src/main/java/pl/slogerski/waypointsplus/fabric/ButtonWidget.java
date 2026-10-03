@@ -2,7 +2,6 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.text.Text;
 
-/** Compatibility subclass exposing the builder API used by newer modules. */
 final class ButtonWidget extends net.minecraft.client.gui.widget.ButtonWidget {
     private ButtonWidget(int x, int y, int width, int height, Text message, PressAction action) {
         super(x, y, width, height, message, action);

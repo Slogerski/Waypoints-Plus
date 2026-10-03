@@ -58,7 +58,7 @@ final class WaypointPresetIcon implements AutoCloseable {
     }
     private void loadItem(WaypointPreset preset) {
         Minecraft minecraft = Minecraft.getInstance();
-        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(preset.item)));
+        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(preset.item))));
         ItemStackRenderState state = new ItemStackRenderState();
         minecraft.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.GUI, null, null, 0);
         PoseStack pose = new PoseStack();

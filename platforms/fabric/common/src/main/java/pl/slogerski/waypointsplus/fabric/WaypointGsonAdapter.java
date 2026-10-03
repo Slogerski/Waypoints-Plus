@@ -9,10 +9,6 @@ import pl.slogerski.waypointsplus.core.Waypoint;
 import java.io.IOException;
 import java.util.UUID;
 
-/**
- * Explicit waypoint codec compatible with the Gson 2.8.9 bundled by Minecraft
- * 1.19.2. It avoids reflective writes to final record fields.
- */
 final class WaypointGsonAdapter extends TypeAdapter<Waypoint> {
     @Override
     public void write(JsonWriter out, Waypoint waypoint) throws IOException {

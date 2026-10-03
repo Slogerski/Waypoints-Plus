@@ -342,8 +342,6 @@ final class FightAlertEditorScreen extends AlertScreen {
         catch (NumberFormatException ignored) { return fallback; }
     }
 
-    private static boolean numericText(String value) { return value.chars().allMatch(Character::isDigit); }
-
     private static boolean validInteger(String value, int minimum, int maximum) {
         int number = integer(value, -1);
         return number >= minimum && number <= maximum;
@@ -393,7 +391,7 @@ final class FightAlertEditorScreen extends AlertScreen {
             capturingKey = false;
             keyButton.setMessage(Component.literal(keyLabel()));
         }
-        if (button == 0 && maxScroll() > 0 && x >= left + 379 && x < left + 387
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && maxScroll() > 0 && x >= left + 379 && x < left + 387
                 && y >= viewportTop() && y < viewportBottom()) {
             draggingScrollbar = true;
             scrollToMouse(y);
@@ -404,7 +402,7 @@ final class FightAlertEditorScreen extends AlertScreen {
                 if (entry.widget().mouseClicked(AlertScreen.mouse(x, y, button), false)) {
                     if (minecraft.gui.screen() == this && children().contains(entry.widget())) {
                         setFocused(entry.widget());
-                        setDragging(button == 0);
+                        setDragging(button == InputConstants.MOUSE_BUTTON_LEFT);
                     }
                     return true;
                 }
@@ -425,7 +423,7 @@ final class FightAlertEditorScreen extends AlertScreen {
     }
 
     @Override protected boolean dragContent(double x, double y, int button, double dx, double dy) {
-        if (draggingScrollbar && button == 0) { scrollToMouse(y); return true; }
+        if (draggingScrollbar && button == InputConstants.MOUSE_BUTTON_LEFT) { scrollToMouse(y); return true; }
         return super.dragContent(x, y, button, dx, dy);
     }
 

@@ -84,23 +84,26 @@ tasks.register("validateVersionManifest") {
             }
         }
 
-        def canonicalStore = null
-        def canonicalStoreVersion = null
-        active.each { spec ->
-            def store = layout.projectDirectory.file(
-                "${spec.directory}/src/main/java/pl/slogerski/waypointsplus/fabric/WaypointConfigStore.java"
-            ).asFile
-            if (!store.isFile()) {
-                throw new GradleException("Missing WaypointConfigStore for active version ${spec.id}")
+        def sharedDirectory = layout.projectDirectory.dir("platforms/fabric/common/src/main/java").asFile
+        def sharedClasses = [
+            "WaypointConfigStore", "WaypointSettings", "WaypointPresetTransfer",
+            "WaypointProjection", "SmartWaypointRefresh", "UiText"
+        ]
+        sharedClasses.each { className ->
+            def relativePath = "pl/slogerski/waypointsplus/fabric/${className}.java"
+            if (!new File(sharedDirectory, relativePath).isFile()) {
+                throw new GradleException("Missing shared ${className}")
             }
-            if (canonicalStore == null) {
-                canonicalStore = store.bytes
-                canonicalStoreVersion = spec.id
-            } else if (!java.util.Arrays.equals(canonicalStore, store.bytes)) {
-                throw new GradleException(
-                    "WaypointConfigStore for ${spec.id} differs from ${canonicalStoreVersion}; " +
-                    "storage changes must be applied to every active version"
-                )
+            active.each { spec ->
+                def localCopy = layout.projectDirectory.file("${spec.directory}/src/main/java/${relativePath}").asFile
+                if (localCopy.exists()) {
+                    throw new GradleException("${className} for ${spec.id} must use the shared implementation")
+                }
+            }
+        }
+        active.each { spec ->
+            if (!project(":${spec.project}").sourceSets.main.java.srcDirs.contains(sharedDirectory)) {
+                throw new GradleException("${spec.id} does not include shared Fabric sources")
             }
         }
     }

@@ -1,5 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Tooltip;
@@ -234,15 +236,6 @@ final class AdvancedSettingsScreen extends Screen {
         minecraft.gui.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }
 
-    private static boolean isValidTint(String value) {
-        if (value.isEmpty()) return true;
-        try {
-            return Integer.parseInt(value) <= 100;
-        } catch (NumberFormatException ignored) {
-            return false;
-        }
-    }
-
     private void toggleMenuBackground(Button button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;
@@ -383,7 +376,7 @@ final class AdvancedSettingsScreen extends Screen {
     @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubled) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (button == 0 && mouseX >= left + 307 && mouseX < left + 315
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= left + 307 && mouseX < left + 315
                 && mouseY >= viewportTop() && mouseY < viewportBottom()) {
             int thumbTop = scrollbarThumbTop();
             int thumbBottom = thumbTop + scrollbarThumbHeight();
@@ -408,7 +401,7 @@ final class AdvancedSettingsScreen extends Screen {
     @Override public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double deltaX, double deltaY) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (button == 0 && draggingScrollbar) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingScrollbar) {
             scrollFromMouse(mouseY);
             return true;
         }
@@ -418,7 +411,7 @@ final class AdvancedSettingsScreen extends Screen {
     @Override public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (button == 0 && draggingScrollbar) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingScrollbar) {
             draggingScrollbar = false;
             return true;
         }

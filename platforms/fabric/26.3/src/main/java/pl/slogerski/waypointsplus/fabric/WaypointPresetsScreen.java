@@ -1,5 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
@@ -52,7 +54,7 @@ final class WaypointPresetsScreen extends AlertScreen {
             Button delete = addRenderableWidget(Button.builder(Component.literal("X"), button -> delete(preset.id))
                     .pos(left + 305, 0).size(22, 20).build());
             delete.active = !WaypointPreset.builtIn(preset.id);
-            rows.add(new Row(preset.id, new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(preset.item))), edit, favorite, delete));
+            rows.add(new Row(preset.id, new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(preset.item)))), edit, favorite, delete));
         }
         backButton = addRenderableWidget(Button.builder(Component.literal(UiText.get("Back", "Wróć")), button -> onClose())
                 .pos(left + 104, top + 224).size(136, 20).build());
@@ -89,9 +91,16 @@ final class WaypointPresetsScreen extends AlertScreen {
         int addY = viewportTop() + 8 - (int) Math.round(scroll);
         GuiPalette.inputOutline(context, left + 17, addY, left + 327, addY + 22);
         boolean hovered = mouseX >= left + 17 && mouseX < left + 327 && mouseY >= addY && mouseY < addY + 22;
-        context.centeredText(font, WaypointPresetStore.canCreate()
-                        ? ">                 [+]                 <" : UiText.get("Cannot add more presets", "Nie można dodać kolejnych szablonów"),
-                left + 172, addY + 7, hovered ? 0xFFD0D0D0 : 0x805A5A5A);
+        boolean canCreate = WaypointPresetStore.canCreate();
+        int color = canCreate ? (hovered ? 0xFFFFFFFF : 0xFFD0D0D0) : 0xFF808080;
+        context.centeredText(font, canCreate
+                        ? "[" + UiText.get("Create Preset", "Stwórz szablon") + "]"
+                        : UiText.get("Cannot add more presets", "Nie można dodać kolejnych szablonów"),
+                left + 172, addY + 7, color);
+        if (canCreate) {
+            context.centeredText(font, ">", left + 32, addY + 7, color);
+            context.centeredText(font, "<", left + 312, addY + 7, color);
+        }
         for (Row row : rows) {
             if (!row.edit.visible) continue;
             context.item(row.icon, left + 20, row.edit.getY() + 2);
@@ -118,13 +127,13 @@ final class WaypointPresetsScreen extends AlertScreen {
         boolean confirmation = pendingDelete != null && rows.stream()
                 .anyMatch(row -> row.id.equals(pendingDelete) && row.delete.visible && row.delete.isMouseOver(x, y));
         if (!confirmation) pendingDelete = null;
-        if (button == 0 && maxScroll() > 0 && x >= left + 334 && x < left + 344 && y >= viewportTop() && y < viewportBottom()) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && maxScroll() > 0 && x >= left + 334 && x < left + 344 && y >= viewportTop() && y < viewportBottom()) {
             draggingScrollbar = true;
             scrollToMouse(y);
             return true;
         }
         int addY = viewportTop() + 8 - (int) Math.round(scroll);
-        if (button == 0 && WaypointPresetStore.canCreate() && x >= left + 17 && x < left + 327
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && WaypointPresetStore.canCreate() && x >= left + 17 && x < left + 327
                 && y >= Math.max(viewportTop(), addY) && y < Math.min(viewportBottom(), addY + 22)) {
             minecraft.gui.setScreen(new WaypointPresetEditorScreen(this, WaypointPreset.classic()));
             return true;
@@ -145,7 +154,7 @@ final class WaypointPresetsScreen extends AlertScreen {
     }
 
     @Override protected boolean dragContent(double x, double y, int button, double dx, double dy) {
-        if (!draggingScrollbar || button != 0) return super.dragContent(x, y, button, dx, dy);
+        if (!draggingScrollbar || button != InputConstants.MOUSE_BUTTON_LEFT) return super.dragContent(x, y, button, dx, dy);
         scrollToMouse(y);
         return true;
     }

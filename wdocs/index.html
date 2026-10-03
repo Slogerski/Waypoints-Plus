@@ -555,6 +555,7 @@ Nether:    100 64  -50</code></pre>
 <ul>
 <li><strong>Presets</strong> &lt;-- opens your shared layout list and the <a href="?lang=en#preset-creator">Preset Creator</a>. <a href="?lang=en#presets">More</a></li>
 <li><strong>Fight Alerts</strong> &lt;-- opens the alert manager. <a href="./index.html?lang=en#fight-alerts">More</a></li>
+<li><strong>Death Waypoints</strong> &lt;-- records your death locations when enabled. It is <strong>OFF by default</strong>; switching it off stops new entries without deleting existing ones. <a href="?lang=en#death-waypoints">How to enable it</a></li>
 <li><strong>Blurred Background</strong> &lt;-- controls the darkened or blurred backdrop behind mod menus. The exact effect depends on the Minecraft version.</li>
 <li><strong>Cross-dimensional</strong> &lt;-- displays compatible waypoints between dimensions, including the vanilla Overworld-Nether 8:1 conversion.</li>
 <li><strong>Waypoint Grouping</strong> &lt;-- combines overlapping distant markers into one label without changing their saved data. <a href="?lang=en#waypoint-grouping">Rules and examples</a></li>
@@ -585,6 +586,7 @@ Nether:    100 64  -50</code></pre>
 <ul>
 <li><strong>Szablony</strong> &lt;-- otwiera wspólną listę układów i <a href="?lang=pl#preset-creator">kreator szablonów</a>. <a href="?lang=pl#presets">Więcej</a></li>
 <li><strong>Alerty walki</strong> &lt;-- otwiera menedżer alertów. <a href="./index.html?lang=pl#fight-alerts">Więcej</a></li>
+<li><strong>Waypointy śmierci</strong> &lt;-- zapisuje miejsca śmierci po włączeniu. Domyślnie jest <strong>OFF</strong>; wyłączenie zatrzymuje tworzenie nowych wpisów, ale nie usuwa istniejących. <a href="?lang=pl#death-waypoints">Jak włączyć</a></li>
 <li><strong>Rozmyte tło</strong> &lt;-- steruje przyciemnionym lub rozmytym tłem za oknami moda. Dokładny efekt zależy od wersji Minecrafta.</li>
 <li><strong>Między wymiarami</strong> &lt;-- wyświetla zgodne waypointy pomiędzy wymiarami, w tym z przelicznikiem Overworld-Nether <code>8:1</code>.</li>
 <li><strong>Grupowanie waypointów</strong> &lt;-- zastępuje nakładające się odległe znaczniki jedną etykietą, bez zmiany zapisanych danych. <a href="?lang=pl#waypoint-grouping">Zasady i przykłady</a></li>
@@ -760,12 +762,20 @@ Pancerz: $DURABILITY</code></pre>
             id: "death-waypoints",
             title: {"en":"Death Waypoints","pl":"Waypointy śmierci"},
             content: {
-                en: `<p>When you die, the mod records the location in a separate <strong>Death Waypoints</strong> profile. Your regular locations stay in their own profiles.</p>
+                en: `<p><strong>Death Waypoints are OFF by default.</strong> Enable them before you need them; deaths that happened while the option was off are not recorded.</p>
+<h3>Enable death waypoints</h3>
+<ol><li>Open <strong>Settings</strong> &gt; <strong>Advanced Settings</strong>.</li><li>Find <strong>Death Waypoints</strong> above <strong>Blurred Background</strong> and set it to <strong>ON</strong>.</li><li>Save your settings.</li></ol>
+<p>After enabling the option, your next death creates a waypoint in a separate <strong>Death Waypoints</strong> profile. The profile is created with the first recorded death if it does not already exist. Your regular locations stay in their own profiles.</p>
+<p>Switching the option back to <strong>OFF</strong> stops new death waypoints. Existing entries and their profile are kept.</p>
 <h3>Find the right death</h3>
 <p>Death waypoint names use the date and time rather than a repeated “Death” label. For example, <code>5 Sep 26 19:30:10</code> identifies a death on September 5, 2026. The month abbreviation follows your selected language.</p>
 <ol><li>Open the waypoint manager.</li><li>Switch to <strong>Death Waypoints</strong> using the profile arrows.</li><li>Find the entry with the relevant time and check its dimension.</li><li>Once you no longer need it, delete it like any other waypoint.</li></ol>
 <p>A death waypoint records a location. It does not keep dropped items from despawning, recover equipment or change the server's death rules.</p>`,
-                pl: `<p>Po śmierci mod zapisuje miejsce w osobnym profilu <strong>Death Waypoints</strong>. Zwykłe lokalizacje pozostają w swoich profilach.</p>
+                pl: `<p><strong>Waypointy śmierci są domyślnie wyłączone.</strong> Włącz je wcześniej; śmierci, które nastąpiły przy wyłączonej opcji, nie są zapisywane.</p>
+<h3>Jak włączyć waypointy śmierci</h3>
+<ol><li>Otwórz <strong>Ustawienia</strong> &gt; <strong>Ustawienia zaawansowane</strong>.</li><li>Znajdź <strong>Waypointy śmierci</strong> nad <strong>Rozmytym tłem</strong> i ustaw <strong>ON</strong>.</li><li>Zapisz ustawienia.</li></ol>
+<p>Po włączeniu opcji kolejna śmierć tworzy waypoint w osobnym profilu <strong>Death Waypoints</strong>. Jeśli profil jeszcze nie istnieje, powstanie przy pierwszej zapisanej śmierci. Zwykłe lokalizacje pozostają w swoich profilach.</p>
+<p>Ponowne ustawienie <strong>OFF</strong> zatrzymuje tworzenie nowych waypointów śmierci. Dotychczasowe wpisy i ich profil zostają zachowane.</p>
 <h3>Znajdź właściwy wpis</h3>
 <p>Nazwy waypointów śmierci zawierają datę i godzinę zamiast powtarzanego napisu „Death”. Na przykład <code>5 wrz 26 19:30:10</code> oznacza śmierć 5 września 2026 roku. Skrót miesiąca zależy od wybranego języka.</p>
 <ol><li>Otwórz listę waypointów.</li><li>Strzałkami profilu przejdź do <strong>Death Waypoints</strong>.</li><li>Znajdź wpis z odpowiednią godziną i sprawdź wymiar.</li><li>Gdy nie będzie już potrzebny, usuń go jak zwykły waypoint.</li></ol>

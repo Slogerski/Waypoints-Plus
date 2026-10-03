@@ -235,15 +235,6 @@ final class AdvancedSettingsScreen extends Screen {
         minecraft.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }
 
-    private static boolean isValidTint(String value) {
-        if (value.isEmpty()) return true;
-        try {
-            return Integer.parseInt(value) <= 100;
-        } catch (NumberFormatException ignored) {
-            return false;
-        }
-    }
-
     private void toggleMenuBackground(Button button) {
         WaypointSettings settings = WaypointsPlusClient.config().settings();
         settings.menuBackground = !settings.menuBackground;

@@ -51,7 +51,7 @@ final class WaypointPresetsScreen extends AlertScreen {
             ButtonWidget delete = addDrawableChild(ButtonWidget.builder(Text.literal("X"), button -> delete(preset.id))
                     .dimensions(left + 305, 0, 22, 20).build());
             delete.active = !WaypointPreset.builtIn(preset.id);
-            rows.add(new Row(preset.id, new ItemStack(Registry.ITEM.get(new Identifier(preset.item))), edit, favorite, delete));
+            rows.add(new Row(preset.id, new ItemStack(Registry.ITEM.get(new Identifier(WaypointPreset.displayItem(preset.item)))), edit, favorite, delete));
         }
         backButton = addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Back", "Wróć")), button -> close())
                 .dimensions(left + 104, top + 224, 136, 20).build());
@@ -88,9 +88,16 @@ final class WaypointPresetsScreen extends AlertScreen {
         int addY = viewportTop() + 8 - (int) Math.round(scroll);
         GuiPalette.inputOutline(context, left + 17, addY, left + 327, addY + 22);
         boolean hovered = mouseX >= left + 17 && mouseX < left + 327 && mouseY >= addY && mouseY < addY + 22;
-        context.drawCenteredTextWithShadow(textRenderer, WaypointPresetStore.canCreate()
-                        ? ">                 [+]                 <" : UiText.get("Cannot add more presets", "Nie można dodać kolejnych szablonów"),
-                left + 172, addY + 7, hovered ? 0xFFD0D0D0 : 0x805A5A5A);
+        boolean canCreate = WaypointPresetStore.canCreate();
+        int color = canCreate ? (hovered ? 0xFFFFFFFF : 0xFFD0D0D0) : 0xFF808080;
+        context.drawCenteredTextWithShadow(textRenderer, canCreate
+                        ? "[" + UiText.get("Create Preset", "Stwórz szablon") + "]"
+                        : UiText.get("Cannot add more presets", "Nie można dodać kolejnych szablonów"),
+                left + 172, addY + 7, color);
+        if (canCreate) {
+            context.drawCenteredTextWithShadow(textRenderer, ">", left + 32, addY + 7, color);
+            context.drawCenteredTextWithShadow(textRenderer, "<", left + 312, addY + 7, color);
+        }
         for (Row row : rows) {
             if (!row.edit.visible) continue;
             context.drawItem(row.icon, left + 20, row.edit.y + 2);

@@ -31,6 +31,7 @@ final class WaypointLabel {
     private boolean kilometers;
     private String distanceText = "";
     private float left, top, right, bottom;
+    private float contentLeft, contentTop, contentRight, contentBottom;
     private double radius;
     private double contentRadius;
     private PanelQuad[] panels = new PanelQuad[0];
@@ -41,7 +42,7 @@ final class WaypointLabel {
         this.preset = preset;
         classic = preset == null || WaypointPreset.DEFAULT_ICON_ID.equals(preset.id);
         layout = classic ? null : new WaypointPresetLayout();
-        coordinates = Math.round(x) + " " + Math.round(y) + " " + Math.round(z);
+        coordinates = Math.round(x - 0.5) + " " + Math.round(y) + " " + Math.round(z - 0.5);
         int count = classic ? 1 : 4;
         text = new Component[count]; widths = new int[count]; enabled = new boolean[count];
         textMatrices = new Matrix4f[count];
@@ -81,6 +82,9 @@ final class WaypointLabel {
         float oldLeft = left, oldTop = top, oldRight = right, oldBottom = bottom;
         boolean first = !initialized;
         initialized = true;
+        contentRadius = 0;
+        contentLeft = contentTop = Float.POSITIVE_INFINITY;
+        contentRight = contentBottom = Float.NEGATIVE_INFINITY;
         if (classic) {
             String label = waypoint.name();
             if (showDistance) label += "  •  " + distanceText;
@@ -90,14 +94,12 @@ final class WaypointLabel {
             left = -widths[0] / 2.0f - 3; top = -7;
             right = widths[0] / 2.0f + 3; bottom = 8;
             textMatrices[0].identity().translate(-widths[0] / 2.0f, -3, 0);
-            contentRadius = 0;
             if (preset != null && preset.icon) {
                 includeContent(iconX(), iconY(), iconX() + 16, iconY() + 16);
             }
         } else {
             setText(renderer, 0, waypoint.name()); setText(renderer, 1, distanceText);
             setText(renderer, 2, coordinates); setText(renderer, 3, waypoint.profile());
-            contentRadius = 0;
             for (int i = 0; i < 4; i++) {
                 WaypointPreset.TextPart part = part(i);
                 enabled[i] = part.enabled && (i != 1 || showDistance) && (i != 2 || showCoordinates);
@@ -110,8 +112,9 @@ final class WaypointLabel {
             for (int i = 0; i < 4; i++) {
                 if (!enabled[i]) continue;
                 WaypointPreset.TextPart part = part(i);
-                includeContent(layout.left(i), layout.top(i), layout.right(i), layout.bottom(i));
-                textMatrices[i].identity().translate(layout.centerX(i), layout.top(i), 0).scale(part.scale, part.scale, 1)
+                float textY = layout.top(i) + (WaypointPreset.DESIGNED_ID.equals(preset.id) ? 1 : 0);
+                includeContent(layout.left(i), textY, layout.right(i), layout.bottom(i) + textY - layout.top(i));
+                textMatrices[i].identity().translate(layout.centerX(i), textY, 0).scale(part.scale, part.scale, 1)
                         .translate(-widths[i] / 2.0f, 0, 0);
             }
             if (preset.icon) includeContent(layout.left(4), layout.top(4), layout.right(4), layout.bottom(4));
@@ -131,8 +134,12 @@ final class WaypointLabel {
     float top() { return top; }
     float right() { return right; }
     float bottom() { return bottom; }
+    float visualLeft() { return Math.min(left, contentLeft); }
+    float visualTop() { return Math.min(top, contentTop); }
+    float visualRight() { return Math.max(right, contentRight); }
+    float visualBottom() { return Math.max(bottom, contentBottom); }
     float iconX() { return classic ? left - 20 : layout.left(4); }
-    float iconY() { return classic ? (top + bottom - 16) / 2 : layout.top(4); }
+    float iconY() { return classic ? (top + bottom - 16) / 2 - (preset != null ? 1 : 0) : layout.top(4); }
 
     private void setText(Font renderer, int index, String value) {
         if (text[index] != null && text[index].getString().equals(value)) return;
@@ -146,6 +153,8 @@ final class WaypointLabel {
     }
 
     private void includeContent(float l, float t, float r, float b) {
+        contentLeft = Math.min(contentLeft, l); contentTop = Math.min(contentTop, t);
+        contentRight = Math.max(contentRight, r); contentBottom = Math.max(contentBottom, b);
         contentRadius = Math.max(contentRadius,
                 Math.max(Math.max(Math.abs(l), Math.abs(r)), Math.max(Math.abs(t), Math.abs(b))));
     }

@@ -289,7 +289,7 @@ abstract class WaypointFormScreen extends Screen {
 
         private ItemIconButton(int x, int y, String itemId) {
             super(x, y, 20, 20, Component.literal(UiText.get("Select Icon", "Wybierz ikonę")));
-            item = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId)));
+            item = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(itemId))));
             setTooltip(Tooltip.create(getMessage()));
         }
 

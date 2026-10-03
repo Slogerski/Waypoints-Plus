@@ -341,8 +341,6 @@ final class FightAlertEditorScreen extends AlertScreen {
         catch (NumberFormatException ignored) { return fallback; }
     }
 
-    private static boolean numericText(String value) { return value.chars().allMatch(Character::isDigit); }
-
     private static boolean validInteger(String value, int minimum, int maximum) {
         int number = integer(value, -1);
         return number >= minimum && number <= maximum;

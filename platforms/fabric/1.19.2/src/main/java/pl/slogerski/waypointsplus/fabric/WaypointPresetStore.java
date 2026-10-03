@@ -288,9 +288,14 @@ final class WaypointPresetStore {
         return id != null && Registry.ITEM.containsId(id);
     }
 
+    static boolean validItemId(String item) {
+        Identifier id = item == null || item.length() > 256 ? null : Identifier.tryParse(item);
+        return id != null;
+    }
+
     static boolean validItem(String item) {
         Identifier id = item == null || item.length() > 256 ? null : Identifier.tryParse(item);
-        return id != null && !"minecraft:air".equals(id.toString()) && Registry.ITEM.containsId(id);
+        return id != null && !"minecraft:air".equals(id.toString());
     }
 
     private static boolean write(List<WaypointPreset> presets, Map<UUID, String> assignments, Map<UUID, String> items) {

@@ -9,7 +9,6 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.UUID;
 
-/** Executed with Gson 2.8.9 to guard Minecraft 1.19.2 compatibility. */
 public final class LegacyGsonCompatibilityCheck {
     private LegacyGsonCompatibilityCheck() {
     }

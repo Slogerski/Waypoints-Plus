@@ -1,5 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
@@ -9,8 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class FightAlertsScreen extends AlertScreen {
-    private static final int ADD_COLOR = 0x805A5A5A;
-    private static final int ADD_HOVERED = 0xFFD0D0D0;
+    private static final int ADD_COLOR = 0xFFD0D0D0;
+    private static final int ADD_HOVERED = 0xFFFFFFFF;
     private final Screen parent;
     private final List<AlertRow> alertRows = new ArrayList<>();
     private int left;
@@ -144,10 +146,15 @@ final class FightAlertsScreen extends AlertScreen {
         int width = 310;
         GuiPalette.inputOutline(context, x, y, x + width, y + 22);
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 22;
-        String label = FightAlertManager.canAdd() ? ">                 [+]                 <"
+        boolean canAdd = FightAlertManager.canAdd();
+        int color = canAdd ? (hovered ? ADD_HOVERED : ADD_COLOR) : 0xFF808080;
+        String label = canAdd ? "[" + UiText.get("Create Alert", "Stwórz alert") + "]"
                 : UiText.get("Limit reached: 32 alerts", "Osiągnięto limit: 32 alerty");
-        context.centeredText(font, Component.literal(label), x + width / 2, y + 7,
-                hovered ? ADD_HOVERED : ADD_COLOR);
+        context.centeredText(font, Component.literal(label), x + width / 2, y + 7, color);
+        if (canAdd) {
+            context.centeredText(font, Component.literal(">"), x + 15, y + 7, color);
+            context.centeredText(font, Component.literal("<"), x + width - 15, y + 7, color);
+        }
     }
 
     private void drawScrollbar(GuiGraphicsExtractor context) {
@@ -161,7 +168,7 @@ final class FightAlertsScreen extends AlertScreen {
     }
 
     @Override protected boolean clickContent(double mouseX, double mouseY, int button) {
-        if (button == 0 && maxScroll() > 0 && mouseX >= left + 335 && mouseX < left + 344
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && maxScroll() > 0 && mouseX >= left + 335 && mouseX < left + 344
                 && mouseY >= viewportTop() && mouseY < viewportBottom()) {
             pendingDeleteId = null;
             draggingScrollbar = true;
@@ -173,7 +180,7 @@ final class FightAlertsScreen extends AlertScreen {
         if (!confirmingDelete) pendingDeleteId = null;
         int x = left + 17;
         int y = viewportTop() + 8 - (int)Math.round(scroll);
-        if (button == 0 && FightAlertManager.canAdd()
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && FightAlertManager.canAdd()
                 && mouseY >= viewportTop() && mouseY < viewportBottom() && mouseX >= x && mouseX < x + 310 && mouseY >= y && mouseY < y + 22) {
             minecraft.gui.setScreen(new FightAlertEditorScreen(this, FightAlertManager.createDefault()));
             return true;
@@ -188,7 +195,7 @@ final class FightAlertsScreen extends AlertScreen {
     }
 
     @Override protected boolean dragContent(double x, double y, int button, double dx, double dy) {
-        if (draggingScrollbar && button == 0) {
+        if (draggingScrollbar && button == InputConstants.MOUSE_BUTTON_LEFT) {
             scrollToMouse(y);
             return true;
         }

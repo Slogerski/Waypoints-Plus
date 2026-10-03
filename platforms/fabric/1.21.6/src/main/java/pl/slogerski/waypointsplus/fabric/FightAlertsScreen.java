@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class FightAlertsScreen extends AlertScreen {
-    private static final int ADD_COLOR = 0x805A5A5A;
-    private static final int ADD_HOVERED = 0xFFD0D0D0;
+    private static final int ADD_COLOR = 0xFFD0D0D0;
+    private static final int ADD_HOVERED = 0xFFFFFFFF;
     private final Screen parent;
     private final List<AlertRow> alertRows = new ArrayList<>();
     private int left;
@@ -144,10 +144,15 @@ final class FightAlertsScreen extends AlertScreen {
         int width = 310;
         GuiPalette.inputOutline(context, x, y, x + width, y + 22);
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 22;
-        String label = FightAlertManager.canAdd() ? ">                 [+]                 <"
+        boolean canAdd = FightAlertManager.canAdd();
+        int color = canAdd ? (hovered ? ADD_HOVERED : ADD_COLOR) : 0xFF808080;
+        String label = canAdd ? "[" + UiText.get("Create Alert", "Stwórz alert") + "]"
                 : UiText.get("Limit reached: 32 alerts", "Osiągnięto limit: 32 alerty");
-        context.drawCenteredTextWithShadow(textRenderer, Text.literal(label), x + width / 2, y + 7,
-                hovered ? ADD_HOVERED : ADD_COLOR);
+        context.drawCenteredTextWithShadow(textRenderer, Text.literal(label), x + width / 2, y + 7, color);
+        if (canAdd) {
+            context.drawCenteredTextWithShadow(textRenderer, Text.literal(">"), x + 15, y + 7, color);
+            context.drawCenteredTextWithShadow(textRenderer, Text.literal("<"), x + width - 15, y + 7, color);
+        }
     }
 
     private void drawScrollbar(DrawContext context) {

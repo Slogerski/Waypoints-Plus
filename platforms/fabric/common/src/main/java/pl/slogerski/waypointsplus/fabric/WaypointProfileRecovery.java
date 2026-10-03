@@ -16,9 +16,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Restores per-server file links removed by builds predating split waypoint storage.
- */
 final class WaypointProfileRecovery {
     private static final String FILE_PATTERN = "[a-z0-9]{16}\\.json";
 
@@ -54,7 +51,6 @@ final class WaypointProfileRecovery {
             }
             if (changed) writeAtomically(profilesFile, profiles.toString());
         } catch (IOException | RuntimeException ignored) {
-            // Recovery is best-effort; normal loading still handles malformed files.
         }
     }
 
@@ -109,7 +105,6 @@ final class WaypointProfileRecovery {
             Candidate previous = candidates.get(serverKey);
             if (previous == null || candidate.isBetterThan(previous)) candidates.put(serverKey, candidate);
         } catch (IOException | RuntimeException ignored) {
-            // Ignore invalid orphan files; the store will never overwrite them.
         }
     }
 

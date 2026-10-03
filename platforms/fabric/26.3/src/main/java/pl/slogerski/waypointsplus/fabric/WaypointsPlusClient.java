@@ -57,6 +57,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
         copyCurrentPositionKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.copy_position", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            WaypointHudRenderer.clearIfIdle();
             FightAlertManager.tick(client);
             config.retryPendingWrites();
             if (client.player != null) {
@@ -105,7 +106,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            WaypointHudRenderer.clear();
+            WaypointHudRenderer.invalidate();
             if (hasPlayerPosition) {
                 config.savePlayerPosition(lastPlayerX, lastPlayerY, lastPlayerZ);
                 hasPlayerPosition = false;

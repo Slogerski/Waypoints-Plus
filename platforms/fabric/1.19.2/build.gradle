@@ -30,6 +30,15 @@ tasks.register("verifyLegacyGson", JavaExec) {
 
 tasks.named("check") {
     dependsOn(tasks.named("verifyLegacyGson"))
+    dependsOn(tasks.named("verifyGroupingRefresh"))
+}
+
+tasks.register("verifyGroupingRefresh", JavaExec) {
+    group = "verification"
+    description = "Verifies waypoint grouping refresh timing."
+    dependsOn(tasks.named("legacyGsonCheckClasses"))
+    classpath = sourceSets.legacyGsonCheck.runtimeClasspath
+    mainClass = "pl.slogerski.waypointsplus.fabric.GroupingRefreshCheck"
 }
 
 loom {

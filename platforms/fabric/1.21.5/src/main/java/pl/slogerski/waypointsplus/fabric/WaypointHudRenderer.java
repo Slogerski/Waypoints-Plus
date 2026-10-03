@@ -18,6 +18,8 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import pl.slogerski.waypointsplus.core.LaserVisibility;
+import pl.slogerski.waypointsplus.core.WaypointGrouping;
+import pl.slogerski.waypointsplus.core.WaypointRenderLifecycle;
 import pl.slogerski.waypointsplus.core.Waypoint;
 import pl.slogerski.waypointsplus.core.WaypointDimensionProjection;
 
@@ -37,7 +39,7 @@ final class WaypointHudRenderer {
     private static final WaypointTextShaders TEXT_SHADERS = new WaypointTextShaders(TEXT_BUFFERS);
     private static final List<PreparedWaypoint> VISIBLE_CLASSIC = new ArrayList<>();
     private static final Map<String, PresetBatch> PRESETS = new LinkedHashMap<>();
-    private static final SmartWaypointGroups SMART_GROUPS = new SmartWaypointGroups();
+    private static final WaypointGrouping SMART_GROUPS = new WaypointGrouping();
     private static final SmartWaypointRefresh SMART_REFRESH = new SmartWaypointRefresh();
     private static final List<PreparedWaypoint> SMART_CANDIDATES = new ArrayList<>();
     private static final List<SmartStack> SMART_STACKS = new ArrayList<>();
@@ -52,7 +54,8 @@ final class WaypointHudRenderer {
     private static boolean cachedCrossDimensionWaypoints;
     private static int cachedSmartDistance;
     private static List<PreparedWaypoint> cachedWaypoints = List.of();
-    private static volatile boolean resourcesChanged;
+    private static final WaypointRenderLifecycle LIFECYCLE = new WaypointRenderLifecycle();
+    private static final Runnable CLEAR_CACHE = WaypointHudRenderer::clearCache;
 
     private WaypointHudRenderer() { }
 
@@ -64,13 +67,21 @@ final class WaypointHudRenderer {
                     }
                     @Override public void reload(ResourceManager manager) {
                         WaypointTextShaders.reload(manager);
-                        resourcesChanged = true;
+                        invalidate();
                     }
                 });
         WorldRenderEvents.AFTER_TRANSLUCENT.register(WaypointHudRenderer::render);
     }
 
-    static void clear() {
+    static void invalidate() {
+        LIFECYCLE.invalidate();
+    }
+
+    static void clearIfIdle() {
+        LIFECYCLE.clearIfIdle(CLEAR_CACHE);
+    }
+
+    private static void clearCache() {
         for (PresetBatch batch : PRESETS.values()) batch.close();
         PRESETS.clear(); VISIBLE_CLASSIC.clear();
         SMART_CANDIDATES.clear(); SMART_GROUPS.clear();
@@ -82,10 +93,18 @@ final class WaypointHudRenderer {
     }
 
     private static void render(WorldRenderContext context) {
+        if (!LIFECYCLE.beginFrame(CLEAR_CACHE)) return;
+        try {
+            renderFrame(context);
+        } finally {
+            LIFECYCLE.endFrame();
+        }
+    }
+
+    private static void renderFrame(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         MatrixStack matrices = context.matrixStack();
         if (client.player == null || client.world == null || matrices == null) return;
-        if (resourcesChanged) { resourcesChanged = false; clear(); }
         WaypointConfigStore store = WaypointsPlusClient.config();
         WaypointSettings settings = store.settings();
         if (!settings.enabled) return;
@@ -108,6 +127,16 @@ final class WaypointHudRenderer {
         VISIBLE_CLASSIC.clear();
         double smartDistanceSquared = (double) settings.smartDistance * settings.smartDistance;
         if (settings.smartWaypoints) {
+            for (SmartStack stack : SMART_STACKS) {
+                stack.eligibleMembers = 0;
+                stack.nearest = null;
+                stack.representative = null;
+                stack.replacement = null;
+                stack.iconMembers = 0;
+                stack.visibleMembers = 0;
+                stack.memberLeft = stack.memberTop = Float.POSITIVE_INFINITY;
+                stack.memberRight = stack.memberBottom = Float.NEGATIVE_INFINITY;
+            }
             if (cachedSmartDistance != settings.smartDistance) SMART_REFRESH.reset();
             cachedSmartDistance = settings.smartDistance;
             double playerX = client.player.getX(), playerY = client.player.getY(), playerZ = client.player.getZ();
@@ -116,9 +145,17 @@ final class WaypointHudRenderer {
                 double dx = target.x - playerX, dy = target.y - playerY, dz = target.z - playerZ;
                 prepared.playerDistanceSquared = dx * dx + dy * dy + dz * dz;
                 boolean far = prepared.playerDistanceSquared > smartDistanceSquared;
-                if (prepared.smartDistanceKnown && prepared.smartFar != far) SMART_REFRESH.reset();
+                if (prepared.smartDistanceKnown && prepared.smartFar != far) SMART_REFRESH.membershipChanged();
                 prepared.smartDistanceKnown = true;
                 prepared.smartFar = far;
+                if (far && prepared.stack != null) {
+                    SmartStack stack = prepared.stack;
+                    stack.eligibleMembers++;
+                    if (prepared.batch != null && prepared.batch.preset.icon) stack.iconMembers++;
+                    if (stack.nearest == null || prepared.playerDistanceSquared < stack.nearest.playerDistanceSquared) {
+                        stack.nearest = prepared;
+                    }
+                }
             }
         }
         long now = System.nanoTime();
@@ -130,13 +167,6 @@ final class WaypointHudRenderer {
             PROJECTION.begin(context.projectionMatrix(), RenderSystem.getModelViewMatrix(),
                     client.getWindow().getScaledWidth(), client.getWindow().getScaledHeight());
         }
-        if (settings.smartWaypoints) {
-            for (SmartStack stack : SMART_STACKS) {
-                stack.near = false;
-                stack.rebuild = false;
-                if (refreshSmart) stack.visibleMembers = 0;
-            }
-        }
         for (PresetBatch batch : PRESETS.values()) batch.visible.clear();
         boolean hasLasers = false;
         for (PreparedWaypoint prepared : cachedWaypoints) {
@@ -144,8 +174,6 @@ final class WaypointHudRenderer {
             prepared.hidden = false;
             prepared.compact = false;
             if (refreshSmart) prepared.group = -1;
-            if (settings.smartWaypoints && prepared.stack != null
-                    && prepared.playerDistanceSquared <= smartDistanceSquared) prepared.stack.near = true;
             if (laserView != null && laserView.isPotentiallyVisible(target.x, target.z)) {
                 drawLaser(matrices, buffers, cameraPos, target,
                         prepared.label.marker(settings.markerArgb), bottomY, topY);
@@ -159,7 +187,8 @@ final class WaypointHudRenderer {
             prepared.distance = distance;
             double visibleDistance = Math.min(distance, MAX_BILLBOARD_DISTANCE);
             float scale = 0.025f * settings.scale * (float) Math.max(1, visibleDistance / 10);
-            prepared.updated = !settings.smartWaypoints || prepared.batch == null || !prepared.batch.preset.icon || dot < 0;
+            prepared.updated = refreshSmart || !settings.smartWaypoints || prepared.batch == null
+                    || !prepared.batch.preset.icon || dot < 0;
             if (prepared.updated) prepared.label.update(client.textRenderer, settings, distance);
             if (prepared.batch != null && dot < -0.15 * distance && visibleDistance > 0
                     && -dot > prepared.label.radius() * scale * distance / visibleDistance) continue;
@@ -169,6 +198,14 @@ final class WaypointHudRenderer {
             }
             prepared.label.matrix.set(matrices.peek().getPositionMatrix()).translate((float) dx, (float) dy, (float) dz)
                     .rotate(camera.getRotation()).scale(scale, -scale, scale);
+            if (settings.smartWaypoints && prepared.smartFar && prepared.stack != null
+                    && prepared.batch != null && prepared.batch.preset.icon) {
+                SmartStack stack = prepared.stack;
+                if (stack.representative == null
+                        || prepared.playerDistanceSquared < stack.representative.playerDistanceSquared) {
+                    stack.representative = prepared;
+                }
+            }
             if (prepared.batch == null) {
                 VISIBLE_CLASSIC.add(prepared);
                 if (refreshSmart) collectSmart(prepared);
@@ -180,14 +217,14 @@ final class WaypointHudRenderer {
         }
         if (refreshSmart) rebuildSmart(client, settings);
         if (settings.smartWaypoints) {
-            VISIBLE_CLASSIC.removeIf(prepared -> prepared.stack != null && !prepared.stack.near);
+            VISIBLE_CLASSIC.removeIf(prepared -> prepared.smartFar && prepared.stack != null && prepared.stack.collapsed());
             for (PresetBatch batch : PRESETS.values()) {
                 for (PreparedWaypoint prepared : batch.visible) {
                     SmartStack stack = prepared.stack;
-                    if (stack != null && !stack.near) {
+                    if (prepared.smartFar && stack != null && stack.collapsed()) {
                         if (stack.representative != prepared) { prepared.hidden = true; continue; }
                         prepared.compact = true;
-                        updateSmartLabel(prepared, stack.nearest, stack.members, client, settings);
+                        updateSmartLabel(prepared, stack.nearest, stack.eligibleMembers, client, settings);
                     }
                 }
                 batch.visible.removeIf(prepared -> prepared.hidden);
@@ -230,76 +267,118 @@ final class WaypointHudRenderer {
     }
 
     private static void rebuildSmart(MinecraftClient client, WaypointSettings settings) {
-        for (PreparedWaypoint prepared : SMART_CANDIDATES) {
-            SmartStack stack = prepared.stack;
-            if (stack != null && stack.visibleMembers == stack.members) stack.rebuild = true;
+        SMART_CANDIDATES.removeIf(prepared -> prepared.stack != null && prepared.stack.valid());
+        for (SmartStack stack : SMART_STACKS) {
+            if (!stack.collapsed() || stack.visibleMembers != stack.eligibleMembers) continue;
+            PreparedWaypoint prepared = stack.representative;
+            updateSmartLabel(prepared, stack.nearest, stack.eligibleMembers, client, settings);
+            WaypointLabel label = prepared.smartLabel;
+            if (!PROJECTION.project(label.matrix, label.visualLeft(), label.visualTop(),
+                    label.visualRight() - label.visualLeft(), label.visualBottom() - label.visualTop())
+                    || !SMART_GROUPS.visibleBounds(PROJECTION.left, PROJECTION.top, PROJECTION.right, PROJECTION.bottom)) continue;
+            prepared.screenLeft = PROJECTION.left; prepared.screenTop = PROJECTION.top;
+            prepared.screenRight = PROJECTION.right; prepared.screenBottom = PROJECTION.bottom;
+            SMART_CANDIDATES.add(prepared);
         }
-        SMART_CANDIDATES.removeIf(prepared -> prepared.stack != null && !prepared.stack.rebuild);
-        for (PreparedWaypoint prepared : cachedWaypoints) {
-            if (prepared.stack != null && prepared.stack.rebuild) prepared.stack = null;
-        }
-        SMART_STACKS.removeIf(stack -> stack.rebuild);
         PreparedWaypoint[] candidatesByGroup = new PreparedWaypoint[SMART_CANDIDATES.size()];
         for (PreparedWaypoint prepared : SMART_CANDIDATES) {
+            SmartStack stack = prepared.stack != null && prepared.stack.valid() ? prepared.stack : null;
             prepared.group = SMART_GROUPS.add(prepared.screenLeft, prepared.screenTop,
-                    prepared.screenRight, prepared.screenBottom, Math.sqrt(prepared.playerDistanceSquared),
-                    prepared.batch != null && prepared.batch.preset.icon);
-            if (prepared.group >= 0) candidatesByGroup[prepared.group] = prepared;
+                    prepared.screenRight, prepared.screenBottom,
+                    stack == null ? prepared.playerDistanceSquared : stack.nearest.playerDistanceSquared,
+                    stack != null || prepared.batch != null && prepared.batch.preset.icon,
+                    stack == null ? 1 : stack.eligibleMembers, stack != null && stack.dense);
+            if (prepared.group >= 0) {
+                candidatesByGroup[prepared.group] = prepared;
+                if (stack != null) SMART_GROUPS.memberBounds(prepared.group,
+                        stack.memberLeft, stack.memberTop, stack.memberRight, stack.memberBottom);
+            }
         }
         SMART_CANDIDATES.removeIf(prepared -> prepared.group < 0);
         SMART_GROUPS.finish();
         for (PreparedWaypoint prepared : SMART_CANDIDATES) {
             if (!SMART_GROUPS.collapsed(prepared.group) || !SMART_GROUPS.representative(prepared.group)) continue;
-            updateSmartLabel(prepared, candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)],
+            updateSmartLabel(prepared, smartNearest(candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)]),
                     SMART_GROUPS.groupSize(prepared.group), client, settings);
             WaypointLabel label = prepared.smartLabel;
-            if (PROJECTION.project(label.matrix, label.left(), label.top(), label.right() - label.left(), label.bottom() - label.top())) {
+            if (PROJECTION.project(label.matrix, label.visualLeft(), label.visualTop(),
+                    label.visualRight() - label.visualLeft(), label.visualBottom() - label.visualTop())) {
                 SMART_GROUPS.includeStackBounds(prepared.group, PROJECTION.left, PROJECTION.top, PROJECTION.right, PROJECTION.bottom);
             }
         }
         SMART_GROUPS.finish();
-        SmartStack[] stacks = new SmartStack[candidatesByGroup.length];
+        SmartStack[] replacements = new SmartStack[candidatesByGroup.length];
         for (PreparedWaypoint prepared : SMART_CANDIDATES) {
             if (!SMART_GROUPS.collapsed(prepared.group)) continue;
             int representative = SMART_GROUPS.representativeIndex(prepared.group);
-            if (stacks[representative] == null) {
-                stacks[representative] = new SmartStack(candidatesByGroup[representative],
-                        candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)]);
-                SMART_STACKS.add(stacks[representative]);
+            if (replacements[representative] == null) {
+                replacements[representative] = new SmartStack(candidatesByGroup[representative],
+                        smartNearest(candidatesByGroup[SMART_GROUPS.nearestIndex(prepared.group)]),
+                        SMART_GROUPS.denseGroup(prepared.group));
             }
-            prepared.stack = stacks[representative];
-            prepared.stack.members++;
+            SmartStack replacement = replacements[representative];
+            SmartStack previous = prepared.stack;
+            if (previous != null && previous.valid()) {
+                previous.replacement = replacement;
+                replacement.eligibleMembers += previous.eligibleMembers;
+                replacement.iconMembers += previous.iconMembers;
+            } else {
+                replacement.eligibleMembers++;
+                if (prepared.batch != null && prepared.batch.preset.icon) replacement.iconMembers++;
+            }
         }
+        for (PreparedWaypoint prepared : cachedWaypoints) {
+            SmartStack previous = prepared.stack;
+            if (prepared.smartFar && previous != null && previous.valid()) {
+                if (previous.replacement != null) prepared.stack = previous.replacement;
+            } else {
+                prepared.stack = prepared.group >= 0 && SMART_GROUPS.collapsed(prepared.group)
+                        ? replacements[SMART_GROUPS.representativeIndex(prepared.group)] : null;
+            }
+        }
+        SMART_STACKS.removeIf(stack -> !stack.valid() || stack.replacement != null);
+        for (SmartStack stack : replacements) if (stack != null) SMART_STACKS.add(stack);
+    }
+
+    private static PreparedWaypoint smartNearest(PreparedWaypoint prepared) {
+        return prepared.stack != null && prepared.stack.valid() ? prepared.stack.nearest : prepared;
     }
 
     private static void updateSmartLabel(PreparedWaypoint prepared, PreparedWaypoint nearest, int count,
                                          MinecraftClient client, WaypointSettings settings) {
-        String name = nearest.waypoint.name() + " (" + count + ")";
-        if (prepared.smartLabel == null || !name.equals(prepared.smartLabelName)) {
+        if (prepared.smartLabel == null || prepared.smartLabelSource != nearest || prepared.smartLabelCount != count) {
+            String name = nearest.waypoint.name() + " (" + count + ")";
             Waypoint original = nearest.waypoint;
             Waypoint grouped = new Waypoint(original.id(), name, original.serverKey(), original.profile(),
                     original.dimension(), original.x(), original.y(), original.z(), original.colorArgb());
             DisplayTarget target = nearest.target;
             prepared.smartLabel = new WaypointLabel(grouped, target.x, target.y, target.z, SMART_PRESET);
-            prepared.smartLabelName = name;
+            prepared.smartLabelSource = nearest;
+            prepared.smartLabelCount = count;
         }
-        prepared.smartLabel.update(client.textRenderer, settings, nearest.distance);
+        prepared.smartLabel.update(client.textRenderer, settings, Math.sqrt(nearest.playerDistanceSquared));
         prepared.smartLabel.matrix.set(prepared.label.matrix);
     }
 
     private static void collectSmart(PreparedWaypoint prepared) {
-        WaypointPreset preset = prepared.batch == null ? null : prepared.batch.preset;
-        boolean hasIcon = preset != null && preset.icon;
-        float left = hasIcon ? prepared.label.iconX() : prepared.label.left();
-        float top = hasIcon ? prepared.label.iconY() : prepared.label.top();
-        float width = hasIcon ? 16 * preset.iconScale : prepared.label.right() - left;
-        float height = hasIcon ? 16 * preset.iconScale : prepared.label.bottom() - top;
+        if (!prepared.smartFar) return;
+        float left = prepared.label.visualLeft();
+        float top = prepared.label.visualTop();
+        float width = prepared.label.visualRight() - left;
+        float height = prepared.label.visualBottom() - top;
         if (!PROJECTION.project(prepared.label.matrix, left, top, width, height)) return;
         prepared.screenLeft = PROJECTION.left; prepared.screenTop = PROJECTION.top;
         prepared.screenRight = PROJECTION.right; prepared.screenBottom = PROJECTION.bottom;
         SMART_CANDIDATES.add(prepared);
         if (prepared.stack != null && SMART_GROUPS.visibleBounds(PROJECTION.left, PROJECTION.top,
-                PROJECTION.right, PROJECTION.bottom)) prepared.stack.visibleMembers++;
+                PROJECTION.right, PROJECTION.bottom)) {
+            SmartStack stack = prepared.stack;
+            stack.visibleMembers++;
+            float x = PROJECTION.left * 0.5f + PROJECTION.right * 0.5f;
+            float y = PROJECTION.top * 0.5f + PROJECTION.bottom * 0.5f;
+            stack.memberLeft = Math.min(stack.memberLeft, x); stack.memberTop = Math.min(stack.memberTop, y);
+            stack.memberRight = Math.max(stack.memberRight, x); stack.memberBottom = Math.max(stack.memberBottom, y);
+        }
     }
 
     private static void prepare(WaypointConfigStore store, String serverKey, String profile,
@@ -321,7 +400,8 @@ final class WaypointHudRenderer {
             if (!serverKey.equals(waypoint.serverKey()) || !profile.equals(waypoint.profile())) continue;
             double scale = WaypointDimensionProjection.scale(dimension, waypoint.dimension(), crossDimensionWaypoints);
             if (Double.isNaN(scale)) continue;
-            DisplayTarget target = new DisplayTarget(waypoint.x() * scale, waypoint.y(), waypoint.z() * scale);
+            DisplayTarget target = new DisplayTarget(Math.floor(waypoint.x() * scale) + 0.5, waypoint.y(),
+                    Math.floor(waypoint.z() * scale) + 0.5);
             String presetId = WaypointPresetStore.selected(waypoint.id());
             PresetBatch batch = null;
             if (!"default".equals(presetId)) {
@@ -381,7 +461,8 @@ final class WaypointHudRenderer {
         final PresetBatch batch;
         final WaypointLabel label;
         WaypointLabel smartLabel;
-        String smartLabelName;
+        PreparedWaypoint smartLabelSource;
+        int smartLabelCount;
         SmartStack stack;
         boolean hidden, compact, updated;
         boolean smartDistanceKnown, smartFar;
@@ -397,15 +478,21 @@ final class WaypointHudRenderer {
     }
 
     private static final class SmartStack {
-        final PreparedWaypoint representative;
-        final PreparedWaypoint nearest;
-        boolean near, rebuild;
-        int members, visibleMembers;
+        PreparedWaypoint representative;
+        PreparedWaypoint nearest;
+        SmartStack replacement;
+        final boolean dense;
+        int eligibleMembers, iconMembers, visibleMembers;
+        float memberLeft, memberTop, memberRight, memberBottom;
 
-        SmartStack(PreparedWaypoint representative, PreparedWaypoint nearest) {
+        SmartStack(PreparedWaypoint representative, PreparedWaypoint nearest, boolean dense) {
             this.representative = representative;
             this.nearest = nearest;
+            this.dense = dense;
         }
+
+        boolean valid() { return eligibleMembers >= 3 && iconMembers > 0; }
+        boolean collapsed() { return valid() && representative != null; }
     }
 
     private static final class PresetBatch implements AutoCloseable {

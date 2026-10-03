@@ -2,7 +2,6 @@ package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -73,7 +72,7 @@ final class FightAlertCombinationScreen extends AlertScreen {
     }
 
     @Override protected boolean clickContent(double mouseX, double mouseY, int button) {
-        if (button == 0 && keys.size() < 4 && mouseX >= addX() && mouseX < addX() + 220
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && keys.size() < 4 && mouseX >= addX() && mouseX < addX() + 220
                 && mouseY >= addY() && mouseY < addY() + 20) {
             keys.add(-1);
             selected = keys.size() - 1;

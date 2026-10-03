@@ -17,10 +17,6 @@ final class WaypointProjection {
         halfHeight = height * 0.5f;
     }
 
-    boolean project(Matrix4fc model, float x, float y, float size) {
-        return project(model, x, y, size, size);
-    }
-
     boolean project(Matrix4fc model, float x, float y, float width, float height) {
         transform.set(viewProjection).mul(model);
         left = top = Float.POSITIVE_INFINITY;

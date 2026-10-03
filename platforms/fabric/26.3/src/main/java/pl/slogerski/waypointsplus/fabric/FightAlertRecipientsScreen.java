@@ -1,7 +1,8 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
@@ -120,7 +121,7 @@ final class FightAlertRecipientsScreen extends AlertScreen {
 
     @Override protected boolean clickContent(double mouseX, double mouseY, int button) {
         int y = addY();
-        if (button == 0 && count < MAX_RECIPIENTS && y >= viewportTop() && y + 20 <= viewportBottom()
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && count < MAX_RECIPIENTS && y >= viewportTop() && y + 20 <= viewportBottom()
                 && mouseX >= left + 20 && mouseX < left + 278 && mouseY >= y && mouseY < y + 20) {
             count++;
             updateRows();

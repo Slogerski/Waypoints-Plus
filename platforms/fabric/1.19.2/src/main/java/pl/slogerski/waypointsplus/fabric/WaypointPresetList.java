@@ -35,7 +35,7 @@ final class WaypointPresetList extends ClickableWidget {
 
     private void refreshPresets() {
         presets = WaypointPresetStore.list().stream().map(preset -> new Preset(preset,
-                new ItemStack(Registry.ITEM.get(new Identifier(preset.item))))).toList();
+                new ItemStack(Registry.ITEM.get(new Identifier(WaypointPreset.displayItem(preset.item)))))).toList();
         scroll = Math.min(scroll, maxScroll());
     }
 

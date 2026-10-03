@@ -1,5 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
@@ -469,13 +471,13 @@ final class WaypointPresetEditorScreen extends AlertScreen {
     }
 
     @Override protected boolean clickContent(double x, double y, int button) {
-        if (selectedEdge >= 0 && button == 1) {
+        if (selectedEdge >= 0 && button == InputConstants.MOUSE_BUTTON_RIGHT) {
             selectedEdge = -1;
             notice = "";
             rebuildWidgets();
             return true;
         }
-        if (selectedEdge >= 0 && inCanvas(x, y) && button == 0) {
+        if (selectedEdge >= 0 && inCanvas(x, y) && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int target = targetEdge(x, y);
             if (target >= 0 && preview.layout().attach(draft, selectedPart, selectedEdge, target / 4, target % 4)) {
                 selectedEdge = -1;
@@ -487,8 +489,8 @@ final class WaypointPresetEditorScreen extends AlertScreen {
             setFocused(null);
             return true;
         }
-        if (inCanvas(x, y) && button <= 2) {
-            int edge = button == 0 ? sourceEdge(x, y) : -1;
+        if (inCanvas(x, y) && button >= InputConstants.MOUSE_BUTTON_LEFT && button <= InputConstants.MOUSE_BUTTON_RIGHT) {
+            int edge = button == InputConstants.MOUSE_BUTTON_LEFT ? sourceEdge(x, y) : -1;
             if (edge >= 0) {
                 selectedEdge = edge;
                 notice = UiText.get("Click a green target edge. Right-click cancels.",
@@ -497,13 +499,13 @@ final class WaypointPresetEditorScreen extends AlertScreen {
                 rebuildWidgets();
                 return true;
             }
-            int hit = button == 0 ? preview.hit((x - originX()) / zoom, (y - originY()) / zoom) : -1;
+            int hit = button == InputConstants.MOUSE_BUTTON_LEFT ? preview.hit((x - originX()) / zoom, (y - originY()) / zoom) : -1;
             if (hit >= 0) { selectedPart = hit; selectedEdge = -1; draggedPart = hit; rebuildWidgets(); }
             else panning = true;
             setFocused(null);
             return true;
         }
-        if (button == 0 && maxPropertyScroll() > 0 && x >= panelRight - 12 && x < panelRight - 4 && y >= propertyTop && y < propertyBottom) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && maxPropertyScroll() > 0 && x >= panelRight - 12 && x < panelRight - 4 && y >= propertyTop && y < propertyBottom) {
             draggingScrollbar = true;
             scrollPropertiesToMouse(y);
             return true;
@@ -512,7 +514,7 @@ final class WaypointPresetEditorScreen extends AlertScreen {
     }
 
     @Override protected boolean dragContent(double x, double y, int button, double dx, double dy) {
-        if (draggingScrollbar && button == 0) { scrollPropertiesToMouse(y); return true; }
+        if (draggingScrollbar && button == InputConstants.MOUSE_BUTTON_LEFT) { scrollPropertiesToMouse(y); return true; }
         if (panning) {
             panX += (float) dx;
             panY += (float) dy;

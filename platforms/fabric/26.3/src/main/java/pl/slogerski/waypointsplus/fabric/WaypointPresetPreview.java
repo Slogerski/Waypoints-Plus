@@ -25,7 +25,7 @@ final class WaypointPresetPreview implements AutoCloseable {
     WaypointPresetPreview(WaypointPreset preset, Font font) {
         this.preset = preset;
         this.font = font;
-        item = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(preset.item)));
+        item = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(preset.item))));
         if (!preset.png.isEmpty()) loadImage();
     }
 

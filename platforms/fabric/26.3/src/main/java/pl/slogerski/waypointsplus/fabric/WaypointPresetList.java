@@ -1,5 +1,7 @@
 package pl.slogerski.waypointsplus.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -34,7 +36,7 @@ final class WaypointPresetList extends AbstractWidget {
 
     private void refreshPresets() {
         presets = WaypointPresetStore.list().stream().map(preset -> new Preset(preset,
-                new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(preset.item))))).toList();
+                new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(preset.item)))))).toList();
         scroll = Math.min(scroll, maxScroll());
     }
 
@@ -86,7 +88,7 @@ final class WaypointPresetList extends AbstractWidget {
     @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubled) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (!active || !visible || button != 0 || !isMouseOver(mouseX, mouseY)
+        if (!active || !visible || button != InputConstants.MOUSE_BUTTON_LEFT || !isMouseOver(mouseX, mouseY)
                 || mouseY < listTop() || mouseY >= listBottom()) return false;
         if (maxScroll() > 0 && mouseX >= getRight() - 9) {
             draggingScrollbar = true;
@@ -132,7 +134,7 @@ final class WaypointPresetList extends AbstractWidget {
     @Override public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double deltaX, double deltaY) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (!draggingScrollbar || button != 0) return false;
+        if (!draggingScrollbar || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         moveScrollbar(mouseY);
         return true;
     }
@@ -140,7 +142,7 @@ final class WaypointPresetList extends AbstractWidget {
     @Override public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
         double mouseX = event.x(), mouseY = event.y();
         int button = event.button();
-        if (!draggingScrollbar || button != 0) return false;
+        if (!draggingScrollbar || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         draggingScrollbar = false;
         return true;
     }

@@ -52,7 +52,7 @@ final class WaypointPreset {
         preset.item = "minecraft:painting";
         preset.icon = true;
         preset.iconLinked = false;
-        preset.iconY = -8;
+        preset.iconY = -9;
         return preset;
     }
 
@@ -104,12 +104,16 @@ final class WaypointPreset {
     boolean valid() {
         if (id == null || !id.matches("default|[0-9a-fA-F-]{36}") || name == null || name.isBlank()
                 || name.length() > 64 || name.chars().anyMatch(Character::isISOControl)) return false;
-        return WaypointPresetStore.itemExists(item) && png != null
+        return WaypointPresetStore.validItemId(item) && png != null
                 && label != null && label.valid() && distance != null && distance.valid()
                 && coordinates != null && coordinates.valid() && profile != null && profile.valid()
                 && position(iconX) && position(iconY) && scale(iconScale)
                 && range(borderSize, 0.5f, 8) && range(padding, 0, 32)
                 && (!icon || !pngIcon || !png.isEmpty()) && (png.isEmpty() || validPng(png)) && WaypointPresetLayout.valid(this);
+    }
+
+    static String displayItem(String item) {
+        return WaypointPresetStore.itemExists(item) ? item : "minecraft:diamond";
     }
 
     boolean linked(int index) {

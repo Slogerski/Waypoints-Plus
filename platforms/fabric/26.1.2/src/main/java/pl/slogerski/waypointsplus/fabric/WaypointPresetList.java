@@ -34,7 +34,7 @@ final class WaypointPresetList extends AbstractWidget {
 
     private void refreshPresets() {
         presets = WaypointPresetStore.list().stream().map(preset -> new Preset(preset,
-                new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(preset.item))))).toList();
+                new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(WaypointPreset.displayItem(preset.item)))))).toList();
         scroll = Math.min(scroll, maxScroll());
     }
 

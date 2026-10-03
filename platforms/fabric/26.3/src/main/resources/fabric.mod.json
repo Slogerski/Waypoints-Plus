@@ -9,6 +9,7 @@
   "icon": "assets/waypointsplus/icon.png",
   "environment": "client",
   "accessWidener": "waypointsplus.accesswidener",
+  "mixins": ["waypointsplus.mixins.json"],
   "entrypoints": {
     "client": ["pl.slogerski.waypointsplus.fabric.WaypointsPlusClient"]
   },
