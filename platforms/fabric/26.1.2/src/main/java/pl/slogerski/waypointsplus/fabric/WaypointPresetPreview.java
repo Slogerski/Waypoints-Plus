@@ -71,7 +71,7 @@ final class WaypointPresetPreview implements AutoCloseable {
         for (int i = 0; i < 4; i++) {
             WaypointPreset.TextPart part = part(i);
             float width = font.width(text(i)) * part.scale;
-            layout.set(i, part.x - width / 2, part.y, width, font.lineHeight * part.scale, part.enabled);
+            layout.setText(preset, i, part.x - width / 2, part.y, width, font.lineHeight * part.scale, part.enabled);
         }
         layout.set(4, preset.iconX, preset.iconY, 16 * preset.iconScale, 16 * preset.iconScale, preset.icon);
         layout.resolve(preset);
@@ -132,7 +132,7 @@ final class WaypointPresetPreview implements AutoCloseable {
             WaypointPreset.TextPart part = part(i);
             if (!part.enabled) continue;
             context.pose().pushMatrix();
-            context.pose().translate(layout.centerX(i), layout.top(i));
+            context.pose().translate(layout.centerX(i), layout.textY(preset, i));
             context.pose().scale(part.scale, part.scale);
             context.pose().translate(-font.width(text(i)) / 2.0f, 0);
             context.text(font, text(i), 0, 0,

@@ -102,7 +102,7 @@ final class WaypointLabel {
                 WaypointPreset.TextPart part = part(i);
                 enabled[i] = part.enabled && (i != 1 || showDistance) && (i != 2 || showCoordinates);
                 float width = widths[i] * part.scale;
-                layout.set(i, part.x - width / 2, part.y, width, renderer.lineHeight * part.scale, enabled[i]);
+                layout.setText(preset, i, part.x - width / 2, part.y, width, renderer.lineHeight * part.scale, enabled[i]);
             }
             layout.set(4, preset.iconX, preset.iconY, 16 * preset.iconScale, 16 * preset.iconScale, preset.icon);
             layout.resolve(preset);
@@ -110,8 +110,9 @@ final class WaypointLabel {
             for (int i = 0; i < 4; i++) {
                 if (!enabled[i]) continue;
                 WaypointPreset.TextPart part = part(i);
-                float textY = layout.top(i) + (WaypointPreset.DESIGNED_ID.equals(preset.id) ? 1 : 0);
-                includeContent(layout.left(i), textY, layout.right(i), layout.bottom(i) + textY - layout.top(i));
+                float offset = WaypointPreset.DESIGNED_ID.equals(preset.id) ? 1 : 0;
+                float textY = layout.textY(preset, i) + offset;
+                includeContent(layout.left(i), layout.top(i) + offset, layout.right(i), layout.bottom(i) + offset);
                 textMatrices[i].identity().translate(layout.centerX(i), textY, 0).scale(part.scale, part.scale, 1)
                         .translate(-widths[i] / 2.0f, 0, 0);
             }

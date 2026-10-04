@@ -31,6 +31,7 @@ tasks.register("verifyLegacyGson", JavaExec) {
 tasks.named("check") {
     dependsOn(tasks.named("verifyLegacyGson"))
     dependsOn(tasks.named("verifyGroupingRefresh"))
+    dependsOn(tasks.named("verifyPresetLayout"))
 }
 
 tasks.register("verifyGroupingRefresh", JavaExec) {
@@ -39,6 +40,14 @@ tasks.register("verifyGroupingRefresh", JavaExec) {
     dependsOn(tasks.named("legacyGsonCheckClasses"))
     classpath = sourceSets.legacyGsonCheck.runtimeClasspath
     mainClass = "pl.slogerski.waypointsplus.fabric.GroupingRefreshCheck"
+}
+
+tasks.register("verifyPresetLayout", JavaExec) {
+    group = "verification"
+    description = "Verifies preset text bounds and anchor positioning."
+    dependsOn(tasks.named("legacyGsonCheckClasses"))
+    classpath = sourceSets.legacyGsonCheck.runtimeClasspath
+    mainClass = "pl.slogerski.waypointsplus.fabric.PresetLayoutCheck"
 }
 
 loom {

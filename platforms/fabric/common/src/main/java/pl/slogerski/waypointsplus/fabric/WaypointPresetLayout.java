@@ -17,6 +17,11 @@ final class WaypointPresetLayout {
         active[part] = enabled;
     }
 
+    void setText(WaypointPreset preset, int part, float x, float y, float width, float height, boolean enabled) {
+        if (WaypointPreset.DESIGNED_ID.equals(preset.id)) set(part, x, y, width, height, enabled);
+        else set(part, x - 1, y - 4, width + 2, height + 6, enabled);
+    }
+
     void resolve(WaypointPreset preset) {
         active[BORDER] = true;
         for (int axis = 0; axis < 2; axis++) {
@@ -61,6 +66,7 @@ final class WaypointPresetLayout {
     float right(int part) { return start[0][part] + size[0][part]; }
     float bottom(int part) { return start[1][part] + size[1][part]; }
     float centerX(int part) { return start[0][part] + size[0][part] / 2; }
+    float textY(WaypointPreset preset, int part) { return top(part) + (WaypointPreset.DESIGNED_ID.equals(preset.id) ? 0 : 4); }
 
     float edge(int part, int edge) {
         int axis = edge / 2;
@@ -158,13 +164,13 @@ final class WaypointPresetLayout {
 
     boolean detach(WaypointPreset preset, int part, int axis) {
         if (preset.anchor(part, axis) == null) return true;
-        float position = axis == 0 ? (part == 4 ? left(part) : centerX(part)) : top(part);
+        float position = axis == 0 ? (part == 4 ? left(part) : centerX(part)) : (part == 4 ? top(part) : textY(preset, part));
         if (!WaypointPreset.position(position)) return false;
         preset.setAnchor(part, axis, null);
         if (part == 4) {
             if (axis == 0) preset.iconX = left(part); else preset.iconY = top(part);
         } else {
-            if (axis == 0) preset.part(part).x = centerX(part); else preset.part(part).y = top(part);
+            if (axis == 0) preset.part(part).x = centerX(part); else preset.part(part).y = textY(preset, part);
         }
         return true;
     }
