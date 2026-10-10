@@ -1,4 +1,4 @@
-![Waypoints Plus](https://cdn.modrinth.com/data/cached_images/04a473c950b6194611b8c394e21eab240d3198ab_0.webp)
+![Waypoints Plus](https://raw.githubusercontent.com/Slogerski/Waypoints-Plus/main/banner.png)
 
 [![Modrinth](https://img.shields.io/badge/MODRINTH-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/mod/waypoints-plus)
 [![CurseForge](https://img.shields.io/badge/CURSEFORGE-F16436?style=for-the-badge&logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/waypoints-plus)
@@ -20,7 +20,7 @@ Save your current position or enter coordinates manually. Choose a name, color, 
 
 Use a chest for storage, a spawner for a farm or a different icon for each base. Keep the classic text-only style when you want something simple.
 
-![Waypoint creation with presets, an item icon and Incognito Mode](https://cdn.modrinth.com/data/cached_images/b5f1a9c906351c5fffd5fc57c0dd52187e397d03.png)
+![Waypoint creation with presets, an item icon and Incognito Mode](https://cdn.modrinth.com/data/cached_images/3966ce1c035a58599e05dd03eb6a783269c7bb61.png)
 
 ## Icons and presets
 
