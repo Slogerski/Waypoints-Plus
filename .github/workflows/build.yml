@@ -48,7 +48,7 @@ jobs:
         run: ./gradlew buildAll validateReleaseArtifacts
 
       - name: Upload release-ready JARs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: waypoints-plus-release-jars
           path: build/modrinth/*.jar
