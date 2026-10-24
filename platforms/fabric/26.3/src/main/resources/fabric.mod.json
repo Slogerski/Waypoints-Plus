@@ -11,7 +11,8 @@
   "accessWidener": "waypointsplus.accesswidener",
   "mixins": ["waypointsplus.mixins.json"],
   "entrypoints": {
-    "client": ["pl.slogerski.waypointsplus.fabric.WaypointsPlusClient"]
+    "client": ["pl.slogerski.waypointsplus.fabric.WaypointsPlusClient"],
+    "modmenu": ["pl.slogerski.waypointsplus.fabric.WaypointsPlusModMenu"]
   },
   "depends": {
     "fabricloader": ">=${fabric_loader}",

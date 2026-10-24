@@ -25,6 +25,8 @@ final class WaypointSettingsScreen extends Screen {
     private int profileIndex;
     private String profileName = "Default";
     private boolean virtualProfile;
+    private String screenLanguage;
+    private Component heading;
 
     WaypointSettingsScreen(Screen parent) {
         this(parent, -1, new Session());
@@ -37,8 +39,13 @@ final class WaypointSettingsScreen extends Screen {
         this.session = session;
     }
 
+    @Override public Component getTitle() { return heading == null ? super.getTitle() : heading; }
+
     @Override protected void init() {
+        WaypointsPlusClient.config().refreshLanguage();
         WaypointSettings settings = WaypointsPlusClient.config().settings();
+        screenLanguage = settings.language;
+        heading = Component.literal(UiText.get("Waypoint Settings", "Ustawienia waypointów"));
         topDonateExpanded = settings.topDonateExpanded;
         WaypointConfigStore store = WaypointsPlusClient.config();
         String serverKey = ServerScope.current();
@@ -81,10 +88,9 @@ final class WaypointSettingsScreen extends Screen {
                 })
                 .pos(left + 154, top + 52).size(136, 20).build());
         edit.active = remove.active = !"Default".equals(profileName);
-        addRenderableWidget(Button.builder(Component.literal(UiText.get("Language: English", "Język: polski")), b -> {
+        addRenderableWidget(Button.builder(Component.literal(store.languageLabel()), b -> {
             applyFields();
-            settings.language = "pl".equals(settings.language) ? "en" : "pl";
-            markDirty();
+            store.cycleLanguage();
             minecraft.gui.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
         }).pos(left + 10, top + 84).size(280, 20).build());
         addToggle(left + 10, top + 108, 136, UiText.get("Background", "Tło"), settings.background, v -> settings.background = v);
@@ -103,6 +109,12 @@ final class WaypointSettingsScreen extends Screen {
         saveButton.active = session.dirty;
         addRenderableWidget(Button.builder(Component.literal(UiText.get("Exit", "Wyjdź")), b -> onClose())
                 .pos(left + 154, top + 216).size(136, 20).build());
+    }
+
+    @Override public void tick() {
+        if (!java.util.Objects.equals(screenLanguage, WaypointsPlusClient.config().settings().language)) {
+            minecraft.gui.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
+        }
     }
 
     private void openProfile(int index, int size, String serverKey) {
@@ -200,7 +212,7 @@ final class WaypointSettingsScreen extends Screen {
         graphics.pose().pushMatrix();
         graphics.pose().translate(width / 2.0f, top + 7.0f);
         graphics.pose().scale(1.2f, 1.2f);
-        graphics.centeredText(font, title, 0, 0, 0xFFFFFFFF);
+        graphics.centeredText(font, getTitle(), 0, 0, 0xFFFFFFFF);
         graphics.pose().popMatrix();
         graphics.centeredText(font, Component.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;

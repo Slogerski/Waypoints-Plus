@@ -31,6 +31,7 @@ final class WaypointManagerScreen extends Screen {
     @Override protected void init() {
         String scope = ServerScope.current();
         WaypointConfigStore store = WaypointsPlusClient.config();
+        store.refreshLanguage();
         List<String> profiles = store.profiles(scope);
         int profileIndex = store.activeProfileIndex(scope);
         profileName = profiles.get(profileIndex);

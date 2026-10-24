@@ -23,6 +23,8 @@ final class WaypointSettingsScreen extends Screen {
     private int profileIndex;
     private String profileName = "Default";
     private boolean virtualProfile;
+    private String screenLanguage;
+    private Text heading;
 
     WaypointSettingsScreen(Screen parent) {
         this(parent, -1, new Session());
@@ -35,8 +37,13 @@ final class WaypointSettingsScreen extends Screen {
         this.session = session;
     }
 
+    @Override public Text getTitle() { return heading == null ? super.getTitle() : heading; }
+
     @Override protected void init() {
+        WaypointsPlusClient.config().refreshLanguage();
         WaypointSettings settings = WaypointsPlusClient.config().settings();
+        screenLanguage = settings.language;
+        heading = Text.literal(UiText.get("Waypoint Settings", "Ustawienia waypointów"));
         topDonateExpanded = settings.topDonateExpanded;
         WaypointConfigStore store = WaypointsPlusClient.config();
         String serverKey = ServerScope.current();
@@ -78,10 +85,9 @@ final class WaypointSettingsScreen extends Screen {
                 })
                 .dimensions(left + 154, top + 52, 136, 20).build());
         edit.active = remove.active = !"Default".equals(profileName);
-        addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Language: English", "Język: polski")), b -> {
+        addDrawableChild(ButtonWidget.builder(Text.literal(store.languageLabel()), b -> {
             applyFields();
-            settings.language = "pl".equals(settings.language) ? "en" : "pl";
-            markDirty();
+            store.cycleLanguage();
             client.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
         }).dimensions(left + 10, top + 84, 280, 20).build());
         addToggle(left + 10, top + 108, 136, UiText.get("Background", "Tło"), settings.background, v -> settings.background = v);
@@ -100,6 +106,12 @@ final class WaypointSettingsScreen extends Screen {
         saveButton.active = session.dirty;
         addDrawableChild(ButtonWidget.builder(Text.literal(UiText.get("Exit", "Wyjdź")), b -> close())
                 .dimensions(left + 154, top + 216, 136, 20).build());
+    }
+
+    @Override public void tick() {
+        if (!java.util.Objects.equals(screenLanguage, WaypointsPlusClient.config().settings().language)) {
+            client.setScreen(new WaypointSettingsScreen(parent, profileIndex, session));
+        }
     }
 
     private void openProfile(int index, int size, String serverKey) {
@@ -190,7 +202,7 @@ final class WaypointSettingsScreen extends Screen {
         matrices.push();
         matrices.translate(width / 2.0f, top + 7.0f, 0.0f);
         matrices.scale(1.2f, 1.2f, 1.0f);
-        context.drawCenteredTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
+        context.drawCenteredTextWithShadow(textRenderer, getTitle(), 0, 0, 0xFFFFFFFF);
         matrices.pop();
         context.drawCenteredTextWithShadow(textRenderer, Text.literal(profileName), width / 2, top + 33, 0xFFFFFFFF);
         if (virtualProfile) return;

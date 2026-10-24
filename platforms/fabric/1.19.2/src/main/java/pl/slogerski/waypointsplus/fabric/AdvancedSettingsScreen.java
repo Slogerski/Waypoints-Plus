@@ -228,6 +228,7 @@ final class AdvancedSettingsScreen extends Screen {
 
     private void resetSettings() {
         WaypointsPlusClient.config().settings().resetDefaults();
+        WaypointsPlusClient.config().resetLanguage();
         settingsScreen.markDirty();
         client.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }

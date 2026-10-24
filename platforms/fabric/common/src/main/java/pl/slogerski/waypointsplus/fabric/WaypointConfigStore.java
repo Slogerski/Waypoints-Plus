@@ -48,6 +48,8 @@ final class WaypointConfigStore {
     private List<Waypoint> legacyWaypoints = new ArrayList<>();
     private Map<String, ServerProfiles> profiles = new LinkedHashMap<>();
     private WaypointSettings settings = new WaypointSettings();
+    private LanguageSettings languages;
+    private boolean savedLanguage;
     private PlayerSnapshot playerSnapshot;
     private String loadedServerKey;
     private Path loadedWaypointFile;
@@ -57,6 +59,7 @@ final class WaypointConfigStore {
     private boolean metadataWritable = true;
     private boolean waypointWritable = true;
     private boolean settingsSavePending;
+    private boolean languageSavePending;
     private boolean profilesSavePending;
     private boolean metadataSavePending;
     private boolean waypointSavePending;
@@ -69,6 +72,62 @@ final class WaypointConfigStore {
     }
 
     WaypointSettings settings() { return settings; }
+
+    String languageLabel() {
+        if (!"ogulniega".equals(languages.mode())) return UiText.get("Language: English", "Język: polski");
+        return UiText.get("Language: Ogulniega", "Język: Ogulniega") + (languages.isOgulniegaPresent() ? ""
+                : UiText.get(" (Unavailable)", " (Niedostępna)"));
+    }
+
+    void cycleLanguage() {
+        languages.cycle();
+        settings.language = languages.language();
+        saveLanguage();
+    }
+
+    void resetLanguage() {
+        languages.reset();
+        settings.language = languages.language();
+        saveLanguage();
+    }
+
+    boolean languageStartupComplete() { return languages == null || languages.isStartupComplete(); }
+
+    void readLanguageAtStartup(long now) {
+        if (!languages.readAtStartup(now)) return;
+        settings.language = languages.language();
+        saveLanguage();
+    }
+
+    void refreshLanguage() {
+        if (!languages.refreshOnOpen()) return;
+        settings.language = languages.language();
+        saveLanguage();
+    }
+
+    private void initializeLanguage() {
+        if (languages == null) {
+            languages = new LanguageSettings(directory.resolve("language.json"), settings.language,
+                    savedLanguage || !settingsWritable,
+                    new OgulniegaLanguage(FabricLoader.getInstance().isModLoaded("ogulniega-mod")));
+        }
+        settings.language = languages.language();
+    }
+
+    private void saveLanguage() {
+        if (!settingsWritable) return;
+        languageSavePending = true;
+        try {
+            JsonObject saved = JsonParser.parseString(Files.readString(settingsFile)).getAsJsonObject();
+            requireSupportedSchema(saved);
+            saved.addProperty("language", settings.language);
+            languageSavePending = !write(settingsFile, GSON.toJson(saved));
+        } catch (IOException | RuntimeException exception) {
+            synchronized (REPORTED_WRITE_FAILURES) {
+                if (REPORTED_WRITE_FAILURES.add(settingsFile)) LOGGER.warn("Could not update the saved interface language", exception);
+            }
+        }
+    }
 
     long waypointRevision() { return waypointRevision; }
 
@@ -295,6 +354,7 @@ final class WaypointConfigStore {
             if (profilesWritable) migrateLegacyWaypoints(oldWaypoints);
             else legacyWaypoints.addAll(oldWaypoints);
             settings.sanitize();
+            initializeLanguage();
             normalizeProfiles();
             if (settingsWritable) saveSettings();
             boolean profilesSaved = !profilesWritable || saveProfiles();
@@ -310,10 +370,13 @@ final class WaypointConfigStore {
             profilesWritable = false;
             metadataWritable = false;
             waypointWritable = false;
+        } finally {
+            initializeLanguage();
         }
     }
 
     void saveSettings() {
+        if (languages != null) settings.language = languages.language();
         settings.sanitize();
         if (!settingsWritable) return;
         settingsSavePending = !write(settingsFile, GSON.toJson(settings));
@@ -418,10 +481,14 @@ final class WaypointConfigStore {
 
     private void loadSettings() throws IOException {
         if (!Files.isRegularFile(settingsFile)) return;
-        WaypointSettings loaded = GSON.fromJson(Files.readString(settingsFile), WaypointSettings.class);
+        JsonElement json = JsonParser.parseString(Files.readString(settingsFile));
+        WaypointSettings loaded = GSON.fromJson(json, WaypointSettings.class);
         if (loaded != null) {
             if (loaded.schemaVersion > CURRENT_SCHEMA_VERSION) throw new IOException("Unsupported settings schema");
             settings = loaded;
+            JsonElement language = json.getAsJsonObject().get("language");
+            savedLanguage = language != null && language.isJsonPrimitive() && language.getAsJsonPrimitive().isString()
+                    && ("en".equals(language.getAsString()) || "pl".equals(language.getAsString()));
         }
     }
 
@@ -634,6 +701,8 @@ final class WaypointConfigStore {
         if (now - lastPersistenceRetry < 1000L) return;
         lastPersistenceRetry = now;
         if (settingsSavePending && settingsWritable) saveSettings();
+        if (languages != null) languages.retryPendingSave();
+        if (languageSavePending && settingsWritable) saveLanguage();
         if (profilesSavePending && profilesWritable) saveProfiles();
         if (metadataSavePending && metadataWritable && !profilesSavePending) saveMetadata();
         if (waypointSavePending && waypointWritable && loadedWaypointFile != null) saveWaypoints();

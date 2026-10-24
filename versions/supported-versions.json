@@ -12,6 +12,7 @@
       "mappingType": "yarn",
       "yarn": "1.19.2+build.28",
       "fabricApi": "0.77.0+1.19.2",
+      "modMenu": "4.1.2",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -25,6 +26,7 @@
       "mappingType": "yarn",
       "yarn": "1.20.1+build.10",
       "fabricApi": "0.92.11+1.20.1",
+      "modMenu": "7.2.2",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -38,6 +40,7 @@
       "mappingType": "yarn",
       "yarn": "1.20.6+build.3",
       "fabricApi": "0.100.8+1.20.6",
+      "modMenu": "10.0.0",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -51,6 +54,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.1+build.3",
       "fabricApi": "0.116.14+1.21.1",
+      "modMenu": "11.0.4",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -65,6 +69,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.4+build.8",
       "fabricApi": "0.119.4+1.21.4",
+      "modMenu": "13.0.4",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -78,6 +83,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.5+build.1",
       "fabricApi": "0.128.2+1.21.5",
+      "modMenu": "14.0.2",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -91,6 +97,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.6+build.1",
       "fabricApi": "0.128.2+1.21.6",
+      "modMenu": "15.0.2",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -105,6 +112,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.8+build.1",
       "fabricApi": "0.136.1+1.21.8",
+      "modMenu": "15.0.2",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -118,6 +126,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.10+build.3",
       "fabricApi": "0.138.4+1.21.10",
+      "modMenu": "16.0.1",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -131,6 +140,7 @@
       "mappingType": "yarn",
       "yarn": "1.21.11+build.6",
       "fabricApi": "0.141.5+1.21.11",
+      "modMenu": "17.0.0",
       "artifactTask": "remapJar",
       "status": "active"
     },
@@ -144,6 +154,7 @@
       "fabricLoader": "0.18.4",
       "mappingType": "official",
       "fabricApi": "0.153.0+26.1.2",
+      "modMenu": "18.0.0",
       "artifactTask": "jar",
       "status": "active"
     },
@@ -156,6 +167,7 @@
       "fabricLoader": "0.18.4",
       "mappingType": "official",
       "fabricApi": "0.154.2+26.2",
+      "modMenu": "20.0.1",
       "artifactTask": "jar",
       "status": "active"
     },
@@ -169,6 +181,7 @@
       "fabricLoader": "0.19.3",
       "mappingType": "official",
       "fabricApi": "0.160.5+26.3",
+      "modMenu": "21.0.0",
       "artifactTask": "jar",
       "status": "active"
     }

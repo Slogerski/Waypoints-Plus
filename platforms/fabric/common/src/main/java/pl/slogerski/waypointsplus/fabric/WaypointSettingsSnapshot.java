@@ -9,7 +9,6 @@ record WaypointSettingsSnapshot(
         boolean deathWaypoints,
         boolean menuBackground,
         boolean crossDimensionWaypoints,
-        String language,
         float scale,
         int markerArgb,
         int textArgb,
@@ -29,7 +28,6 @@ record WaypointSettingsSnapshot(
                 settings.deathWaypoints,
                 settings.menuBackground,
                 settings.crossDimensionWaypoints,
-                settings.language,
                 settings.scale,
                 settings.markerArgb,
                 settings.textArgb,
@@ -50,7 +48,6 @@ record WaypointSettingsSnapshot(
         settings.deathWaypoints = deathWaypoints;
         settings.menuBackground = menuBackground;
         settings.crossDimensionWaypoints = crossDimensionWaypoints;
-        settings.language = language;
         settings.scale = scale;
         settings.markerArgb = markerArgb;
         settings.textArgb = textArgb;

@@ -232,6 +232,7 @@ final class AdvancedSettingsScreen extends Screen {
 
     private void resetSettings() {
         WaypointsPlusClient.config().settings().resetDefaults();
+        WaypointsPlusClient.config().resetLanguage();
         settingsScreen.markDirty();
         minecraft.gui.setScreen(new AdvancedSettingsScreen(settingsScreen));
     }

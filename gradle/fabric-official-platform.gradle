@@ -47,6 +47,7 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${fabricLoaderVersion}"
     implementation "net.fabricmc.fabric-api:fabric-api:${platformSpec.fabricApi}"
     implementation "com.google.code.gson:gson:${gson_version}"
+    compileOnly("com.terraformersmc:modmenu:${platformSpec.modMenu}") { transitive = false }
 }
 
 processResources {

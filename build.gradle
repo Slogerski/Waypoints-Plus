@@ -17,6 +17,14 @@ allprojects {
 }
 
 subprojects {
+    if (name != "common") {
+        repositories {
+            maven {
+                url = "https://maven.terraformersmc.com/"
+                content { includeGroup("com.terraformersmc") }
+            }
+        }
+    }
     def javaRelease = name == "common"
         ? 17
         : (activeSpecByProject[name]?.java as Integer)
@@ -82,12 +90,16 @@ tasks.register("validateVersionManifest") {
             if (!spec.fabricApi) {
                 throw new GradleException("Fabric API version is missing for ${spec.id}")
             }
+            if (!(spec.modMenu instanceof String) || spec.modMenu.isBlank()) {
+                throw new GradleException("Mod Menu compile-time version is missing for ${spec.id}")
+            }
         }
 
         def sharedDirectory = layout.projectDirectory.dir("platforms/fabric/common/src/main/java").asFile
         def sharedClasses = [
             "WaypointConfigStore", "WaypointSettings", "WaypointPresetTransfer",
-            "WaypointProjection", "SmartWaypointRefresh", "UiText"
+            "WaypointProjection", "SmartWaypointRefresh", "UiText", "LanguageSettings", "OgulniegaLanguage",
+            "WaypointsPlusModMenu"
         ]
         sharedClasses.each { className ->
             def relativePath = "pl/slogerski/waypointsplus/fabric/${className}.java"
@@ -200,11 +212,32 @@ tasks.register("validateReleaseArtifacts") {
                 throw new GradleException("More than one artifact matched ${spec.project}")
             }
             new JarFile(jarFile).withCloseable { jar ->
+                if (jar.getJarEntry("com/ogulniega/OgulniegaModApi.class") != null) {
+                    throw new GradleException("${jarFile.name} contains the test-only Ogulniega API")
+                }
                 def metadataEntry = jar.getJarEntry("fabric.mod.json")
                 if (metadataEntry == null) {
                     throw new GradleException("${jarFile.name} has no fabric.mod.json")
                 }
                 def metadata = new JsonSlurper().parse(jar.getInputStream(metadataEntry))
+                def modMenuClass = "pl.slogerski.waypointsplus.fabric.WaypointsPlusModMenu"
+                if (metadata.entrypoints?.modmenu != [modMenuClass]
+                        || jar.getJarEntry(modMenuClass.replace('.', '/') + ".class") == null) {
+                    throw new GradleException("${jarFile.name} has no valid Mod Menu settings integration")
+                }
+                if (metadata.depends?.modmenu != null || jar.entries().any {
+                    it.name.startsWith("com/terraformersmc/modmenu/")
+                            || it.name ==~ /META-INF\/jars\/modmenu-.*\.jar/
+                }) {
+                    throw new GradleException("${jarFile.name} must not require or bundle Mod Menu")
+                }
+                def iconPath = "assets/waypointsplus/icon.png"
+                def iconEntry = jar.getJarEntry(iconPath)
+                def sourceIcon = layout.projectDirectory.file("${spec.directory}/src/main/resources/${iconPath}").asFile
+                if (metadata.icon != iconPath || iconEntry == null || !sourceIcon.isFile()
+                        || !Arrays.equals(jar.getInputStream(iconEntry).bytes, sourceIcon.bytes)) {
+                    throw new GradleException("${jarFile.name} has a missing or outdated icon")
+                }
                 if (metadata.id != mod_id) {
                     throw new GradleException("${jarFile.name} has unexpected mod id ${metadata.id}")
                 }
