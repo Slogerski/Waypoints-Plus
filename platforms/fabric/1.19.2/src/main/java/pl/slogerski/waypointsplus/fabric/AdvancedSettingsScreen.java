@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class AdvancedSettingsScreen extends Screen {
-    private static final int CONTENT_HEIGHT = 305;
+    private static final int CONTENT_HEIGHT = 330;
     private static final int SCROLL_STEP = 18;
     private static final int SCROLL_TRACK = 0x805A5A5A;
     private static final int SCROLL_THUMB = 0xFF969696;
@@ -98,6 +98,11 @@ final class AdvancedSettingsScreen extends Screen {
                 UiText.get("Grouping Distance", "Odległość grupowania"));
         smartDistance.setMaxLength(6);
         smartDistance.setChangedListener(this::applySmartDistance);
+        scrollChild(ButtonWidget.builder(Text.literal(settings.metersOnly ? "ON" : "OFF"), button -> {
+            settings.metersOnly = !settings.metersOnly;
+            button.setMessage(Text.literal(settings.metersOnly ? "ON" : "OFF"));
+            markDirty();
+        }).dimensions(left + 224, 0, 82, 18).build(), 306);
         fixedChild(ButtonWidget.builder(Text.literal(UiText.get("Reset Settings", "Resetuj ustawienia")),
                 button -> resetSettings())
                 .dimensions(left + 94, top + 224, 132, 20).build());
@@ -304,7 +309,7 @@ final class AdvancedSettingsScreen extends Screen {
         GuiPalette.panel(context, left, top, left + 316, top + 256);
         int contentTop = viewportTop() - (int)Math.round(scrollOffset);
         context.enableScissor(left + 4, viewportTop(), left + 307, viewportBottom());
-        for (int y : new int[] {76, 101, 126, 151, 176, 201, 226, 251, 276}) {
+        for (int y : new int[] {76, 101, 126, 151, 176, 201, 226, 251, 276, 301}) {
             drawSeparator(context, left + 12, contentTop + y - 3);
         }
         GuiPalette.input(context, left + 224, contentTop + 131, 82, 18);
@@ -329,6 +334,8 @@ final class AdvancedSettingsScreen extends Screen {
                 left + 12, contentTop + 261, 0xFFD9E2F0);
         context.drawTextWithShadow(textRenderer, UiText.get("Grouping Distance", "Odległość grupowania"),
                 left + 12, contentTop + 286, 0xFFD9E2F0);
+        context.drawTextWithShadow(textRenderer, UiText.get("Meters Only", "Tylko metry"),
+                left + 12, contentTop + 311, 0xFFD9E2F0);
         for (ScrollEntry entry : scrollWidgets) {
             if (entry.widget.visible) entry.widget.render(matrices, mouseX, mouseY, delta);
         }

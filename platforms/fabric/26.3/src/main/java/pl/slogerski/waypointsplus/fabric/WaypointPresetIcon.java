@@ -4,8 +4,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.builders.UVPair;
-import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases;
-import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -95,11 +93,10 @@ final class WaypointPresetIcon implements AutoCloseable {
     void draw(Matrix4f matrix, net.minecraft.client.renderer.OrderedSubmitNodeCollector queue, float x, float y, float scale) {
         PoseStack pose = new PoseStack(); pose.last().pose().set(matrix);
         for (Face face : faces) {
-            queue.submitCustom(SubmitRenderPhases.ALWAYS_ON_TOP,
-                    new CustomFeatureRenderer.Submit(pose.last().copy(), face.layer, (entry, vertices) -> {
+            WaypointOverlayRenderer.submit(queue, pose.last().copy(), face.layer, (entry, vertices) -> {
                 for (Point point : face.points) vertices.addVertex(entry.pose(), x + point.x * scale, y + point.y * scale, 0)
                         .setColor(point.color).setUv(point.u, point.v).setLight(0xF000F0);
-            }));
+            });
         }
     }
     @Override public void close() {

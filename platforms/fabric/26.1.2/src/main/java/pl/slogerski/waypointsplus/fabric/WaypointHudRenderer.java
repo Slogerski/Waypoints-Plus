@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 
 final class WaypointHudRenderer {
-    private static final int LABEL_BUFFER_SIZE = 786432;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final List<PreparedWaypoint> VISIBLE_CLASSIC = new ArrayList<>();
     private static final Map<String, PresetBatch> PRESETS = new LinkedHashMap<>();
@@ -177,7 +176,6 @@ final class WaypointHudRenderer {
                     minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
         }
         for (PresetBatch batch : PRESETS.values()) batch.visible.clear();
-        boolean hasLasers = false;
         for (PreparedWaypoint prepared : cachedWaypoints) {
             DisplayTarget target = prepared.target;
             prepared.hidden = false;

@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 final class WaypointHudRenderer {
-    private static final int LABEL_BUFFER_SIZE = 786432;
     private static final double MAX_BILLBOARD_DISTANCE = 24.0;
     private static final List<PreparedWaypoint> VISIBLE_CLASSIC = new ArrayList<>();
     private static final Map<String, PresetBatch> PRESETS = new LinkedHashMap<>();
@@ -51,6 +50,7 @@ final class WaypointHudRenderer {
     private WaypointHudRenderer() { }
 
     static void register() {
+        WaypointOverlayRenderer.register();
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(
                 new SimpleSynchronousResourceReloadListener() {
                     @Override public Identifier getFabricId() {
@@ -159,7 +159,6 @@ final class WaypointHudRenderer {
                     minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
         }
         for (PresetBatch batch : PRESETS.values()) batch.visible.clear();
-        boolean hasLasers = false;
         for (PreparedWaypoint prepared : cachedWaypoints) {
             DisplayTarget target = prepared.target;
             prepared.hidden = false;
@@ -168,7 +167,6 @@ final class WaypointHudRenderer {
             if (laserView != null && laserView.isPotentiallyVisible(target.x, target.z)) {
                 drawLaser(matrices, buffers, cameraPos, target,
                         prepared.label.marker(settings.markerArgb), bottomY, topY);
-                hasLasers = true;
             }
             double dx = target.x - cameraPos.x, dy = target.y + 1.5 - cameraPos.y, dz = target.z - cameraPos.z;
             double lengthSquared = dx * dx + dy * dy + dz * dz;
@@ -248,9 +246,9 @@ final class WaypointHudRenderer {
             }
         }
 
-        for (PreparedWaypoint prepared : VISIBLE_CLASSIC) prepared.label.drawText(minecraft.font, textQueue);
+        for (PreparedWaypoint prepared : VISIBLE_CLASSIC) prepared.label.drawText(textQueue);
         for (PresetBatch batch : PRESETS.values()) {
-            for (PreparedWaypoint prepared : batch.visible) prepared.renderLabel().drawText(minecraft.font, textQueue);
+            for (PreparedWaypoint prepared : batch.visible) prepared.renderLabel().drawText(textQueue);
         }
 
     }

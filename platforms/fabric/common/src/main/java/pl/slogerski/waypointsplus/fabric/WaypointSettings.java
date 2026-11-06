@@ -12,6 +12,7 @@ final class WaypointSettings {
     boolean hideFormCoordinates = false;
     boolean defaultPresetFavorite = false;
     boolean showDistance = true;
+    boolean metersOnly = false;
     boolean laserEnabled = false;
     boolean deathWaypoints = false;
     boolean menuBackground = true;
@@ -34,6 +35,7 @@ final class WaypointSettings {
         background = true;
         showCoordinates = false;
         showDistance = true;
+        metersOnly = false;
         laserEnabled = false;
         deathWaypoints = false;
         menuBackground = true;

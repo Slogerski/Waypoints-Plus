@@ -61,12 +61,26 @@ public final class LegacyGsonCompatibilityCheck {
         legacySettings.sanitize();
         require(legacySettings.schemaVersion == 1, "Legacy settings schema was not upgraded");
         require(legacySettings.topDonateExpanded, "Legacy settings should expand supporters by default");
+        require(!legacySettings.metersOnly, "Legacy settings should keep automatic distance units");
+        WaypointSettingsSnapshot originalSettings = WaypointSettingsSnapshot.capture(legacySettings);
+        legacySettings.metersOnly = true;
+        WaypointSettingsSnapshot metersSettings = WaypointSettingsSnapshot.capture(legacySettings);
+        require(!originalSettings.equals(metersSettings), "Distance units must count as unsaved changes");
+        WaypointSettings savedSettings = gson.fromJson(gson.toJson(legacySettings), WaypointSettings.class);
+        require(savedSettings.metersOnly, "Meters-only preference was not preserved");
+        originalSettings.restore(legacySettings);
+        require(!legacySettings.metersOnly, "Discarding settings must restore distance units");
+        metersSettings.restore(legacySettings);
+        require(legacySettings.metersOnly, "Restoring settings must preserve meters-only mode");
+        legacySettings.resetDefaults();
+        require(!legacySettings.metersOnly, "Reset must restore automatic distance units");
         String deeplyNested = "[".repeat(65) + "]".repeat(65);
         try {
             WaypointTransfer.importText(deeplyNested);
             throw new AssertionError("Deep clipboard JSON was accepted");
         } catch (IllegalArgumentException expected) {
         }
+        WaypointDistanceTextCheck.run();
         pl.slogerski.waypointsplus.fabric.remote.RemoteContentCompatibilityCheck.run();
     }
 

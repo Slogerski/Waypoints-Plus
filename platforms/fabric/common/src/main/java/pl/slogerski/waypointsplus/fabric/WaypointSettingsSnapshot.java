@@ -5,6 +5,7 @@ record WaypointSettingsSnapshot(
         boolean background,
         boolean showCoordinates,
         boolean showDistance,
+        boolean metersOnly,
         boolean laserEnabled,
         boolean deathWaypoints,
         boolean menuBackground,
@@ -24,6 +25,7 @@ record WaypointSettingsSnapshot(
                 settings.background,
                 settings.showCoordinates,
                 settings.showDistance,
+                settings.metersOnly,
                 settings.laserEnabled,
                 settings.deathWaypoints,
                 settings.menuBackground,
@@ -44,6 +46,7 @@ record WaypointSettingsSnapshot(
         settings.background = background;
         settings.showCoordinates = showCoordinates;
         settings.showDistance = showDistance;
+        settings.metersOnly = metersOnly;
         settings.laserEnabled = laserEnabled;
         settings.deathWaypoints = deathWaypoints;
         settings.menuBackground = menuBackground;

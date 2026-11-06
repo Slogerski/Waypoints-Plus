@@ -7,3 +7,23 @@ apply from: rootProject.file("gradle/fabric-official-platform.gradle")
 loom {
     accessWidenerPath = file("src/main/resources/waypointsplus.accesswidener")
 }
+
+sourceSets {
+    overlayCheck {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+
+tasks.register("verifyWaypointOverlay", JavaExec) {
+    group = "verification"
+    description = "Verifies stable see-through waypoint ordering during camera movement."
+    dependsOn(tasks.named("overlayCheckClasses"))
+    classpath = sourceSets.overlayCheck.runtimeClasspath
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    mainClass = "pl.slogerski.waypointsplus.fabric.WaypointOverlayCheck"
+}
+
+tasks.named("check") {
+    dependsOn(tasks.named("verifyWaypointOverlay"))
+}

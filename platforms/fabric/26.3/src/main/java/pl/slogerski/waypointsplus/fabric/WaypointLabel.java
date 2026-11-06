@@ -1,9 +1,6 @@
 package pl.slogerski.waypointsplus.fabric;
 
 import net.minecraft.client.gui.Font;
-import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases;
-import net.minecraft.client.renderer.feature.CustomFeatureRenderer;
-import net.minecraft.client.renderer.feature.TextFeatureRenderer;
 import net.minecraft.network.chat.Component;
 import org.joml.Matrix4f;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -21,15 +18,12 @@ final class WaypointLabel {
     private final int[] widths;
     private final boolean[] enabled;
     private final Matrix4f[] textMatrices;
-    private final Matrix4f scratch = new Matrix4f();
     final Matrix4f matrix = new Matrix4f();
     private boolean initialized;
     private boolean showDistance, showCoordinates, polish, backgroundEnabled, matchText;
     private int backgroundSetting, textSetting, markerSetting, tintSetting;
     private int marker, textColor, background;
-    private long distanceBucket = Long.MIN_VALUE;
-    private boolean kilometers;
-    private String distanceText = "";
+    private final WaypointDistanceText distanceText = new WaypointDistanceText();
     private float left, top, right, bottom;
     private float contentLeft, contentTop, contentRight, contentBottom;
     private double radius;
@@ -69,14 +63,8 @@ final class WaypointLabel {
         showDistance = settings.showDistance; showCoordinates = settings.showCoordinates;
         polish = "pl".equals(settings.language);
         boolean wantsDistance = showDistance && (classic || preset.distance.enabled);
-        if (wantsDistance) {
-            boolean km = distance >= 1000;
-            long bucket = Math.round(km ? distance / 100 : distance);
-            if (bucket != distanceBucket || km != kilometers || languageChanged || !initialized) {
-                distanceBucket = bucket; kilometers = km;
-                distanceText = km ? bucket / 10 + (polish ? "," : ".") + bucket % 10 + " km" : bucket + " m";
-                layoutChanged = true;
-            }
+        if (wantsDistance && distanceText.update(distance, settings.metersOnly, polish)) {
+            layoutChanged = true;
         }
         if (!layoutChanged) return;
         float oldLeft = left, oldTop = top, oldRight = right, oldBottom = bottom;
@@ -87,7 +75,7 @@ final class WaypointLabel {
         contentRight = contentBottom = Float.NEGATIVE_INFINITY;
         if (classic) {
             String label = waypoint.name();
-            if (showDistance) label += "  •  " + distanceText;
+            if (showDistance) label += "  •  " + distanceText.text();
             if (showCoordinates) label += "  " + coordinates;
             setText(renderer, 0, label);
             enabled[0] = true;
@@ -98,7 +86,7 @@ final class WaypointLabel {
                 includeContent(iconX(), iconY(), iconX() + 16, iconY() + 16);
             }
         } else {
-            setText(renderer, 0, waypoint.name()); setText(renderer, 1, distanceText);
+            setText(renderer, 0, waypoint.name()); setText(renderer, 1, distanceText.text());
             setText(renderer, 2, coordinates); setText(renderer, 3, waypoint.profile());
             for (int i = 0; i < 4; i++) {
                 WaypointPreset.TextPart part = part(i);
@@ -131,10 +119,6 @@ final class WaypointLabel {
         return radius;
     }
 
-    float left() { return left; }
-    float top() { return top; }
-    float right() { return right; }
-    float bottom() { return bottom; }
     float visualLeft() { return Math.min(left, contentLeft); }
     float visualTop() { return Math.min(top, contentTop); }
     float visualRight() { return Math.max(right, contentRight); }
@@ -167,19 +151,16 @@ final class WaypointLabel {
             int color = quad.border ? marker : background;
             if ((color >>> 24) == 0) continue;
             var background = renderer.prepareBackground(quad.left, quad.top, quad.right, quad.bottom, color);
-            queue.submitCustom(SubmitRenderPhases.ALWAYS_ON_TOP,
-                    new CustomFeatureRenderer.Submit(pose.last().copy(), background.renderType(Font.DisplayMode.SEE_THROUGH),
-                            (entry, vertices) -> background.render(entry.pose(), vertices, 0xF000F0, false)));
+            WaypointOverlayRenderer.submit(queue, pose.last().copy(), background.renderType(Font.DisplayMode.SEE_THROUGH),
+                    (entry, vertices) -> background.render(entry.pose(), vertices, 0xF000F0, false));
         }
     }
 
-    void drawText(Font renderer, net.minecraft.client.renderer.OrderedSubmitNodeCollector queue) {
+    void drawText(net.minecraft.client.renderer.OrderedSubmitNodeCollector queue) {
         for (int i = 0; i < text.length; i++) {
             if (!enabled[i]) continue;
-            queue.submitCustom(SubmitRenderPhases.ALWAYS_ON_TOP,
-                    new TextFeatureRenderer.Submit(new Matrix4f(matrix).mul(textMatrices[i]),
-                            Font.DisplayMode.SEE_THROUGH, 0xF000F0,
-                            new TextFeatureRenderer.Content.Text(0, 0, text[i].getVisualOrderText(), false, textColor, 0, 0)));
+            WaypointOverlayRenderer.submitText(queue, new Matrix4f(matrix).mul(textMatrices[i]),
+                    text[i].getVisualOrderText(), textColor);
         }
     }
 
