@@ -26,6 +26,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
     private KeyMapping nextProfileKey;
     private KeyMapping quickWaypointKey;
     private KeyMapping copyCurrentPositionKey;
+    private KeyMapping toggleVisibilityKey;
     private int lastPlayerX, lastPlayerY, lastPlayerZ;
     private boolean hasPlayerPosition;
     private boolean wasPlayerDead;
@@ -60,6 +61,8 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 "key.waypointsplus.quick", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         copyCurrentPositionKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.waypointsplus.copy_position", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+        toggleVisibilityKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.waypointsplus.toggle_visibility", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (clientStarted && !config.languageStartupComplete() && client.isGameLoadFinished()) {
                 config.readLanguageAtStartup(System.nanoTime());
@@ -111,8 +114,13 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                         position.getX(), position.getY(), position.getZ(),
                         "pl".equals(config.settings().language)));
             }
+            while (toggleVisibilityKey.consumeClick()) {
+                if (client.player != null && client.level != null) WaypointVisibility.toggle();
+            }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            WaypointVisibility.reset();
+            while (toggleVisibilityKey.consumeClick()) { }
             WaypointHudRenderer.invalidate();
             if (hasPlayerPosition) {
                 config.savePlayerPosition(lastPlayerX, lastPlayerY, lastPlayerZ);

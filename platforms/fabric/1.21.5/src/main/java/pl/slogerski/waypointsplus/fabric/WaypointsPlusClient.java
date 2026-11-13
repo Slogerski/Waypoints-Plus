@@ -24,6 +24,7 @@ public final class WaypointsPlusClient implements ClientModInitializer {
     private KeyBinding nextProfileKey;
     private KeyBinding quickWaypointKey;
     private KeyBinding copyCurrentPositionKey;
+    private KeyBinding toggleVisibilityKey;
     private int lastPlayerX, lastPlayerY, lastPlayerZ;
     private boolean hasPlayerPosition;
     private boolean wasPlayerDead;
@@ -61,6 +62,8 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                 "key.waypointsplus.quick", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
         copyCurrentPositionKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.waypointsplus.copy_position", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
+        toggleVisibilityKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.waypointsplus.toggle_visibility", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (clientStarted && !config.languageStartupComplete() && client.getOverlay() == null && client.currentScreen != null) {
@@ -117,8 +120,13 @@ public final class WaypointsPlusClient implements ClientModInitializer {
                         position.getX(), position.getY(), position.getZ(),
                         "pl".equals(config.settings().language)));
             }
+            while (toggleVisibilityKey.wasPressed()) {
+                if (client.player != null && client.world != null) WaypointVisibility.toggle();
+            }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            WaypointVisibility.reset();
+            while (toggleVisibilityKey.wasPressed()) { }
             WaypointHudRenderer.invalidate();
             if (hasPlayerPosition) {
                 config.savePlayerPosition(lastPlayerX, lastPlayerY, lastPlayerZ);

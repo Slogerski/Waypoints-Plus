@@ -62,6 +62,7 @@ final class WaypointHudRenderer {
                     }
                 });
         LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+            if (WaypointVisibility.hidden()) return;
             Minecraft minecraft = Minecraft.getInstance();
             if (minecraft.player == null || minecraft.level == null) return;
             WaypointConfigStore store = WaypointsPlusClient.config();
@@ -101,7 +102,7 @@ final class WaypointHudRenderer {
     }
 
     private static void render(LevelRenderContext context) {
-        if (!LIFECYCLE.beginFrame(CLEAR_CACHE)) return;
+        if (WaypointVisibility.hidden() || !LIFECYCLE.beginFrame(CLEAR_CACHE)) return;
         try {
             renderFrame(context);
         } finally {

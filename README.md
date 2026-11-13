@@ -160,8 +160,11 @@ Before streaming or sharing screenshots, remember that names, landmarks and wayp
 | Reload Waypoints From File | Unassigned |
 | Create Waypoint From Clipboard | Unassigned |
 | Copy Current Position | Unassigned |
+| Toggle Waypoint Visibility | Unassigned |
 
 Change these in Minecraft's **Controls** menu. Fight Alert triggers are configured separately for each alert.
+
+**Toggle Waypoint Visibility** hides all waypoint markers and beams until you press the key again or leave the world. Only the key assignment is saved.
 
 ## Installation
 

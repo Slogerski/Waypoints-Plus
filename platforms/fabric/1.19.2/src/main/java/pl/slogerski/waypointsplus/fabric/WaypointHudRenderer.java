@@ -89,7 +89,7 @@ final class WaypointHudRenderer {
     }
 
     private static void render(WorldRenderContext context) {
-        if (!LIFECYCLE.beginFrame(CLEAR_CACHE)) return;
+        if (WaypointVisibility.hidden() || !LIFECYCLE.beginFrame(CLEAR_CACHE)) return;
         try {
             renderFrame(context);
         } finally {

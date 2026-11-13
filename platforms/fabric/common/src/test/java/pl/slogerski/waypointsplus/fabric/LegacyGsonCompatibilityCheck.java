@@ -81,7 +81,21 @@ public final class LegacyGsonCompatibilityCheck {
         } catch (IllegalArgumentException expected) {
         }
         WaypointDistanceTextCheck.run();
+        verifySessionVisibility(gson, legacySettings);
         pl.slogerski.waypointsplus.fabric.remote.RemoteContentCompatibilityCheck.run();
+    }
+
+    private static void verifySessionVisibility(Gson gson, WaypointSettings settings) {
+        String saved = gson.toJson(settings);
+        require(!WaypointVisibility.hidden(), "Waypoints should be visible at startup");
+        WaypointVisibility.toggle();
+        require(WaypointVisibility.hidden(), "First press must hide waypoints");
+        require(saved.equals(gson.toJson(settings)), "Hiding waypoints must not change saved settings");
+        WaypointVisibility.toggle();
+        require(!WaypointVisibility.hidden(), "Second press must show waypoints");
+        WaypointVisibility.toggle();
+        WaypointVisibility.reset();
+        require(!WaypointVisibility.hidden(), "Leaving a world must restore visibility");
     }
 
     private static void require(boolean condition, String message) {
