@@ -1,8 +1,8 @@
 ![Waypoints Plus](https://raw.githubusercontent.com/Slogerski/Waypoints-Plus/main/banner.png)
 
-[![Modrinth](https://img.shields.io/badge/MODRINTH-00AF5C?style=for-the-badge&logo=modrinth&logoColor=white)](https://modrinth.com/mod/waypoints-plus)
-[![CurseForge](https://img.shields.io/badge/CURSEFORGE-F16436?style=for-the-badge&logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/waypoints-plus)
-[![Source](https://img.shields.io/badge/SOURCE-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Slogerski/Waypoints-Plus)
+[![Available on Modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/waypoints-plus)
+[![Available on CurseForge](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/curseforge_vector.svg)](https://www.curseforge.com/minecraft/mc-mods/waypoints-plus)
+[![Source on GitHub](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/github_vector.svg)](https://github.com/Slogerski/Waypoints-Plus)
 
 ![Modrinth Downloads](https://img.shields.io/modrinth/dt/LWEC5GA8?style=flat-square&logo=modrinth&label=Modrinth%20Downloads&color=00AF5C)
 ![CurseForge Downloads](https://img.shields.io/curseforge/dt/1626803?style=flat-square&logo=curseforge&label=CurseForge%20Downloads&color=F16436)
@@ -160,11 +160,8 @@ Before streaming or sharing screenshots, remember that names, landmarks and wayp
 | Reload Waypoints From File | Unassigned |
 | Create Waypoint From Clipboard | Unassigned |
 | Copy Current Position | Unassigned |
-| Toggle Waypoint Visibility | Unassigned |
 
 Change these in Minecraft's **Controls** menu. Fight Alert triggers are configured separately for each alert.
-
-**Toggle Waypoint Visibility** hides all waypoint markers and beams until you press the key again or leave the world. Only the key assignment is saved.
 
 ## Installation
 
@@ -173,6 +170,60 @@ Install [Fabric Loader](https://fabricmc.net/) and [Fabric API](https://modrinth
 Check the **Versions** tab for available builds and their requirements. Use the file marked for your Minecraft version.
 
 Waypoints Plus runs on the client and does not need to be installed on the server.
+
+
+<details>
+<summary><strong>📊 Performance Benchmarks - v1.1.1 26.3 </strong></summary>
+
+### WaypointsPlus - Rendering Performance
+
+Performance tests conducted on Minecraft 26.3 Fabric, using Ogulniega Launcher with all optimization mods disabled.
+
+#### Benchmark Results
+
+| Configuration | FPS |
+|---|---:|
+| 0 Waypoints (Baseline) | 480–538 |
+| 10 Waypoints (Grouping OFF) | 480–504 |
+| 100 Waypoints (Grouping OFF) | 398–410 |
+| 1000 Waypoints (Grouping OFF) | 120–128 |
+| 1000 Waypoints > 1 Group | 520-535 |
+| 1000 Waypoints > 6 Groups | 475–483 |
+
+#### Waypoints Grouping
+
+Waypoints Grouping automatically combines overlapping waypoint markers into a single visual group, reducing rendering overhead.
+
+#### Test Environment
+
+| Component | Specification |
+|---|---|
+| Minecraft | 26.3 |
+| Modloader | Fabric 0.20.1 |
+| Launcher | Ogulniega Launcher |
+| Installed Mods | WaypointsPlus, Fabric API |
+| Optimization Mods | Disabled |
+| CPU | Intel Core i5-1135G7 |
+| GPU | Intel Iris Xe Graphics |
+| Java | 25.0.1 |
+| Resolution | 1920 × 991 |
+| Render Distance | 2 Chunks |
+| Simulation Distance | 5 Chunks |
+| GUI Scale | 2 |
+| VSync | OFF |
+| Max Framerate | Unlimited |
+| Test World | One dirt|
+
+#### Benchmark Notes
+
+- Tests were performed without Sodium or other optimization mods.
+- Waypoint grouping was disabled for the ungrouped tests.
+- All tests were conducted in a void environment to minimize world-rendering overhead.
+- FPS values are preliminary observed readings, not averages from repeated benchmark runs.
+- Actual performance depends on hardware, waypoint distribution, camera position, and rendering settings.
+
+</details>
+
 
 ## Local data
 
